@@ -3,7 +3,7 @@
   noiR - Redis + ion SFU 
   <br>
 </h1>
-<h4 align="center"></h4>
+<h4 align="center">WIP NOTICE: noiR is pre-alpha and unstable, do not build on noiR</h4>
 <p align="center">
   <a href="https://pion.ly/slack"><img src="https://img.shields.io/badge/join-us%20on%20slack-gray.svg?longCache=true&logo=slack&colorB=brightgreen" alt="Slack Widget"></a>
   <a href="https://pkg.go.dev/github.com/net-prophet/noir"><img src="https://godoc.org/github.com/net-prophet/noir?status.svg" alt="GoDoc"></a>
@@ -22,11 +22,13 @@ It listens on the same ports as `ion-sfu` and accepts the same commands, while a
 managing membership, and a naive single-datacenter scaling model.
 
 Any ion client can send signaling messages to any `noiR` node in the cluster.
-When `noiR` receives a message from a peer, it forwards the messages to whichever `noir` node is hosting the room.
+When `noiR` receives a message from a peer, it retains the signaling connection,
+but forwards the messages over redis to whichever `noir` node is hosting the room.
+
 `noiR` keeps track of how many publishers or subscribers are in a room, and manages client lifecycle and cleanup.
 
-Clients (callers) can connect directly to `noiR` over public `gRPC` or `jsonrpc` interfaces,
-using any regular `ion-sfu` client; management commands will be sent over a separate `jsonrpc` interface.
+Clients (callers) can connect directly to `noiR` over public `jsonrpc` interfaces using `ion-sdk-js`
+or any regular `ion-sfu` client; management commands get sent over a separate `jsonrpc` interface.
 
 <img src="./architecture.png" />
 
@@ -51,6 +53,7 @@ You'll need `ion-sfu:v1.4.2` running in `gRPC` mode, and with open UDP ports for
 - [x] Client JSONRPC API :7000 - JSONRPC-Redis Bridge (so the `ion-sfu/examples` work)
 - [x] Adapt my dependent codebases to start using `noiR` immediately
 - [ ] Learn to write golang unit tests; write unit tests :'(
+- [ ] Ensure cleanup safety, no dead peers
 - [ ] Admin JSONRPC API :7001 (management commands and/or multiplexed client connections)
 - [ ] Admin gRPC API :50051 (management commands and/or multiplexed client connections)
 - [ ] "Demo Mode": Bundled `ion-sdk-react` storybooks for instant testing in a browser
@@ -61,10 +64,10 @@ You'll need `ion-sfu:v1.4.2` running in `gRPC` mode, and with open UDP ports for
 
 ### Motivation
 
-We started this project as an exercise to develop our golang skills, and also to scratch an itch -- `ion-sfu`
-aspires to be the most lightweight, the simplest possible version of itself. `noiR` is, by contrast, highly
+We started this project as an exercise to develop our golang skills, but also to scratch an itch -- `ion-sfu`
+aspires to be the most lightweight SFU, the simplest possible version of itself. `noiR` is, by contrast, highly
 opinionated and with more batteries included. If you're building a next-generation video conferencing solution,
-and want a natural, flexible API for managing your sessions, `noiR` might be right for you.
+and want a 20mb micro-SFU with a natural, flexible API for managing your sessions, `noiR` might be right for you.
 
 ### Contributing
 
