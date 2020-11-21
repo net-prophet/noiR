@@ -1,0 +1,20 @@
+linters-settings:
+  gocritic:
+    disabled-checks:
+      - ifElseChain
+      - singleCaseSwitch
+  govet:
+    check-shadowing: true
+  misspell:
+    locale: US
+
+linters:
+  disable-all: true
+  enable:
+    - gofmt
+    - golint
+    - scopelint
+    - gocritic
+
+run:
+  skip-dirs: []
