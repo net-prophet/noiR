@@ -34,12 +34,15 @@ or any regular `ion-sfu` client; management commands get sent over a separate `j
 
 ### Usage
 
-You'll need `ion-sfu:v1.4.2` running in `gRPC` mode, and with open UDP ports for conferencing; for development or testing --
-
-`docker run --net=host docker.io/pionwebrtc/ion-sfu:v1.4.2-grpc`
 
 ###### Docker Run Demo
-`docker run -p 7000:7000 -p 7001:7001 docker.netprophet.tech/netp/noir:latest`
+1. Ensure redis is running on your localhost
+
+` docker run -p 6379:6379 --name redis sameersbn/redis redis-cli`
+
+2. Start `noiR`
+
+`docker run -p 7000:7000 -p 7001:7001 -p 5000-5020:5000-5020/udp docker.netprophet.tech/netp/noir:latest`
 
 ###### Build Binary
 `make build`
