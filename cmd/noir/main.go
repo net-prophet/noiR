@@ -121,7 +121,7 @@ func load() bool {
 }
 
 func parse() bool {
-	flag.StringVar(&file, "c", "config.toml", "config file")
+	flag.StringVar(&file, "c", "/configs/sfu.toml", "config file")
 	flag.StringVar(&redisURL, "u", "localhost:6379", "redisURL to use")
 	flag.StringVar(&demoAddr, "d", "", "http addr to listen for demo")
 	flag.StringVar(&rpcAddr, "j", "", "jsonrpc addr to listen")
