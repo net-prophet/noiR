@@ -49,7 +49,7 @@ demonstration without your help.
 ###### Docker Run Demo
 1. Ensure redis is running on your localhost
 
-` docker run -p 6379:6379 --name redis sameersbn/redis redis-cli`
+` docker run -p 6379:6379 --name redis sameersbn/redis`
 
 2. Start `noiR` with Demo Mode at [`http://localhost:7070`](http://localhost:7070)
 
