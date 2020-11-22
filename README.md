@@ -53,7 +53,7 @@ demonstration without your help.
 
 2. Start `noiR` with Demo Mode at [`http://localhost:7070`](http://localhost:7070)
 
-`docker run --net host ghcr.io/net-prophet/noir/sfu:latest -d :7070 -j :7000`
+`docker run --net host docker.pkg.github.com/net-prophet/noir/sfu:latest -d :7070 -j :7000`
 
 *(instead of host networking, you can use `-p 7070:7070 -p 7000:7000 -p 5000-5020:5000-5020/udp`)*
 
