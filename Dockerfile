@@ -19,6 +19,7 @@ RUN apk --no-cache add ca-certificates
 COPY --from=0 /sfu /usr/local/bin/sfu
 
 COPY config.toml /configs/sfu.toml
+COPY demo/ ./demo
 
 ENTRYPOINT ["/usr/local/bin/sfu"]
 CMD ["-c", "/configs/sfu.toml"]
