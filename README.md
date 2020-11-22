@@ -21,8 +21,10 @@
 ### About
 
 `noiR` is a redis-backed SFU cluster based on [`ion-sfu`](https://github.com/pion/ion-sfu).
-It listens on the same ports as `ion-sfu` and accepts the same commands, while adding extra support for
-managing membership, and a naive single-datacenter scaling model.
+A [selective forwarding unit](https://webrtcglossary.com/sfu/) is a video routing service which allows webrtc sessions to scale more efficiently.
+
+`noiR` listens on the same ports as `ion-sfu` and accepts the same commands, while adding extra support for
+managing membership, and a *very naive* single-datacenter scaling model.
 
 Any ion client can send signaling messages to any `noiR` node in the cluster.
 When `noiR` receives a message from a peer, it retains the signaling connection,
@@ -39,6 +41,10 @@ or any regular `ion-sfu` client; management commands get sent over a separate `j
 
 ### Usage
 
+First of all, don't use `noiR`. That's just reasonable advice -- it's a very young project, we are novice golang devs,
+the architecture is unproven, and the whole API might change. If you do use `noiR`, you will immediately find bugs, or
+need new features, and we welcome all the help you can send! `noiR` might never be more than a neat
+demonstration without your help.
 
 ###### Docker Run Demo
 1. Ensure redis is running on your localhost
