@@ -27,6 +27,12 @@ tag:
 							 && docker push ${CI_REGISTRY_IMAGE}:latest ) \
 		  || echo "usage: make tag TAG=..."
 
+demo_redis:
+	docker run -p 6379:6379 --name redis sameersbn/redis redis-cli
+
+readme_demo:
+	echo "Starting local demonstration at http://localhost:7070" && docker run --net host ghcr.io/net-prophet/noir:latest -d :7070 -j :7000
+
 test: go_init
 	go test \
 		-timeout 120s \
