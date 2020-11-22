@@ -18,6 +18,14 @@ build: go_init
 docker:
 	docker build . -t ${CI_REGISTRY_IMAGE}:latest
 
+tag:
+	test ! -z "$$TAG" && (echo "Tagging $$TAG" \
+							 && git tag $$TAG  \
+							 && git push --tags \
+							 && docker build . -t ${CI_REGISTRY_IMAGE}:$$TAG \
+							 && docker push ${CI_REGISTRY_IMAGE}:$$TAG ) \
+		  || echo "usage: make tag TAG=..."
+
 test: go_init
 	go test \
 		-timeout 120s \
