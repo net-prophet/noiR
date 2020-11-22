@@ -165,13 +165,13 @@ func (s *jsonRedisSignal) RPCPeerBus(ctx context.Context, conn *jsonrpc2.Conn, r
 		}
 
 		if rpc.Method == "trickle" {
-			var candidate webrtc.ICECandidateInit
-			if err := json.Unmarshal(packed, &candidate); err != nil {
+			var trickle Trickle
+			if err := json.Unmarshal(packed, &trickle); err != nil {
 				log.Errorf("failed to unmarshal trickle %s %s", err, packed)
 				continue
 			}
 
-			if err := conn.Notify(ctx, "trickle", candidate); err != nil {
+			if err := conn.Notify(ctx, "trickle", trickle); err != nil {
 				log.Errorf("error sending ice candidate %s", err)
 				continue
 			}

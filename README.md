@@ -30,7 +30,9 @@ but forwards the messages over redis to whichever `noir` node is hosting the roo
 Clients (callers) can connect directly to `noiR` over public `jsonrpc` interfaces using `ion-sdk-js`
 or any regular `ion-sfu` client; management commands get sent over a separate `jsonrpc` interface.
 
-<img src="./architecture.png" />
+<center>
+    <img src="./architecture.png" />
+</center>
 
 ### Usage
 
@@ -40,9 +42,11 @@ or any regular `ion-sfu` client; management commands get sent over a separate `j
 
 ` docker run -p 6379:6379 --name redis sameersbn/redis redis-cli`
 
-2. Start `noiR`
+2. Start `noiR` with Demo Mode at [`http://localhost:7070`](http://localhost:7070)
 
-`docker run -p 7000:7000 -p 7001:7001 -p 5000-5020:5000-5020/udp docker.netprophet.tech/netp/noir:latest`
+`docker run --net host docker.netprophet.tech/netp/noir:latest -d :7070 -j :7000`
+
+*(instead of host networking, you can use `-p 7070:7070 -p 7000:7000 -p 5000-5020:5000-5020/udp`)*
 
 ###### Build Binary
 `make build`
@@ -54,12 +58,12 @@ or any regular `ion-sfu` client; management commands get sent over a separate `j
 
 - [x] Build a naive prototype redis messaging server for `ion-sfu`
 - [x] Client JSONRPC API :7000 - JSONRPC-Redis Bridge (so the `ion-sfu/examples` work)
-- [x] Adapt my dependent codebases to start using `noiR` immediately
+- [x] "Doing It Live" - Adapted my own dependent codebases to start using `noiR` immediately
+- [x] "Demo Mode": Bundled `ion-sdk-react` storybooks for instant testing in a browser
 - [ ] Learn to write golang unit tests; write unit tests :'(
 - [ ] Ensure cleanup safety, no dead peers
 - [ ] Admin JSONRPC API :7001 (management commands and/or multiplexed client connections)
 - [ ] Admin gRPC API :50051 (management commands and/or multiplexed client connections)
-- [ ] "Demo Mode": Bundled `ion-sdk-react` storybooks for instant testing in a browser
 - [ ] Room permissions - Allow/Deny new joins, basicauth room passwords, admin squelch + kick
 - [ ] Stream permissions - Fine-grained control over audio/video publish permissions
 - [ ] In-cluster SFU-SFU Relay (HA Stream Mirroring, Large Room Support)

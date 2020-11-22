@@ -30,6 +30,7 @@ var (
 	ctx          = context.Background()
 	file         string
 	redisURL     string
+	demoAddr     string
 	nodeID       string
 	cert         string
 	key          string
@@ -52,6 +53,7 @@ func showHelp() {
 	fmt.Println("      -c {config file}")
 	fmt.Println("      -u {redis url}")
 	fmt.Println("      -n {node id}")
+	fmt.Println("      -d {demo http addr}")
 	fmt.Println("      -j {jsonrpc addr}")
 	fmt.Println("      -h (show help info)")
 }
@@ -121,6 +123,7 @@ func load() bool {
 func parse() bool {
 	flag.StringVar(&file, "c", "config.toml", "config file")
 	flag.StringVar(&redisURL, "u", "localhost:6379", "redisURL to use")
+	flag.StringVar(&demoAddr, "d", "", "http addr to listen for demo")
 	flag.StringVar(&rpcAddr, "j", "", "jsonrpc addr to listen")
 	flag.StringVar(&cert, "cert", "", "jsonrpc https cert file")
 	flag.StringVar(&key, "key", "", "jsonrpc https key file")
@@ -172,6 +175,15 @@ func main() {
 	}
 
 	go signalserver.SFUBus()
+	
+	if(demoAddr != "") {
+
+		log.Infof("demo http server running at %s", demoAddr)
+		fs := http.FileServer(http.Dir("demo/"))
+		http.Handle("/", fs)
+	    http.ListenAndServe(demoAddr, nil)
+
+	}
 
 	for {
 	}
