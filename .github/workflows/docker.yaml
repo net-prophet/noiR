@@ -14,5 +14,6 @@ jobs:
         with:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+          repository: net-prophet/noir/sfu
           registry: docker.pkg.github.com
           tag_with_ref: true
