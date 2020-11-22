@@ -23,7 +23,8 @@ tag:
 							 && git tag $$TAG  \
 							 && git push --tags \
 							 && docker build . -t ${CI_REGISTRY_IMAGE}:$$TAG \
-							 && docker push ${CI_REGISTRY_IMAGE}:$$TAG ) \
+							 && docker push ${CI_REGISTRY_IMAGE}:$$TAG \
+							 && docker push ${CI_REGISTRY_IMAGE}:latest ) \
 		  || echo "usage: make tag TAG=..."
 
 test: go_init
