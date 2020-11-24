@@ -2,8 +2,6 @@ package pkg
 
 import (
 	"encoding/json"
-	"time"
-
 	"github.com/go-redis/redis"
 	log "github.com/pion/ion-log"
 	sfu "github.com/pion/ion-sfu/pkg"
@@ -16,7 +14,6 @@ type RedisSignal interface {
 	PeerID() string
 	SessionID() string
 	Cleanup()
-	SendToPeer(value interface{})
 }
 
 // redisSignal represent the redisSignal model
@@ -41,17 +38,6 @@ func (s *redisSignal) SessionID() string {
 
 func (s *redisSignal) PeerID() string {
 	return s.pid
-}
-
-func (s *redisSignal) SendToPeer(value interface{}) {
-	r := s.server.RedisClient()
-	if s.pid != "" {
-		r.LPush("peer-recv/"+s.pid, value)
-		r.Expire("peer-recv/"+s.pid, 10*time.Second)
-		r.Publish("peer-recv/", s.pid)
-	} else {
-		log.Errorf("cannot push to empty peer")
-	}
 }
 
 func (s *redisSignal) Cleanup() {
@@ -97,11 +83,11 @@ func (s *redisSignal) SFUPeerBus(p *sfu.Peer) {
 			answer, err := p.Answer(negotiation.Desc)
 			if err != nil {
 				log.Errorf("error accepting offer %s %s", err, params)
-				s.SendToPeer(Notify{"error", err, "2.0"})
+				s.server.SendToPeer(s.pid, Notify{"error", err, "2.0"})
 				continue
 			}
 			message, err := json.Marshal(Result{rpc.ID, answer, "2.0"})
-			s.SendToPeer(message)
+			s.server.SendToPeer(s.pid, message)
 
 		} else if rpc.Method == "answer" {
 			var negotiation Negotiation
@@ -112,7 +98,7 @@ func (s *redisSignal) SFUPeerBus(p *sfu.Peer) {
 
 			if err != nil {
 				log.Errorf("error using answer %s %s", err, negotiation.Desc)
-				s.SendToPeer(Notify{"error", err, "2.0"})
+				s.server.SendToPeer(s.pid, Notify{"error", err, "2.0"})
 				continue
 			}
 
@@ -125,7 +111,7 @@ func (s *redisSignal) SFUPeerBus(p *sfu.Peer) {
 			err := p.Trickle(trickle.Candidate, trickle.Target)
 			if err != nil {
 				log.Errorf("error in candidate %s %s", err, params)
-				s.SendToPeer(Notify{"error", err, "2.0"})
+				s.server.SendToPeer(s.pid, Notify{"error", err, "2.0"})
 				continue
 			}
 		} else {

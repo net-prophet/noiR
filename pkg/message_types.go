@@ -20,6 +20,13 @@ type Trickle struct {
 	Target    int                     `json:"target"`
 }
 
+type Play struct {
+	Sid      string `json:"sid"`
+	Pid      string `json:"pid"`
+	Filename string `json:"filename"`
+	Repeat   bool   `json:"repeat"`
+}
+
 type RPCCall struct {
 	ID     string      `json:"id"`
 	Method string      `json:"method"`
@@ -29,6 +36,11 @@ type RPCCall struct {
 type RPCJoin struct {
 	RPCCall
 	Params Join `json:"params"`
+}
+
+type RPCPlay struct {
+	RPCCall
+	Params Play `json:"params"`
 }
 
 type ResultOrNotify struct {
