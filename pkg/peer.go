@@ -7,48 +7,48 @@ import (
 	sfu "github.com/pion/ion-sfu/pkg"
 )
 
-// RedisSignal represent the signals
-type RedisSignal interface {
-	SFUPeerBus(p *sfu.Peer)
+// NoirPeer represent the signals
+type NoirPeer interface {
+	Listen(p *sfu.Peer)
 	Redis() *redis.Client
 	PeerID() string
 	SessionID() string
 	Cleanup()
 }
 
-// redisSignal represent the redisSignal model
-type redisSignal struct {
-	server RedisSignalServer
+// noirPeer represent the noirPeer model
+type noirPeer struct {
+	server NoirSFU
 	pid    string
 	sid    string
 }
 
-// NewRedisSignal will create an object that represent the Signal interface
-func NewRedisSignal(server RedisSignalServer, pid string, sid string) RedisSignal {
-	return &redisSignal{server, pid, sid}
+// NewNoirPeer will create an object that represent the Signal interface
+func NewNoirPeer(server NoirSFU, pid string, sid string) NoirPeer {
+	return &noirPeer{server, pid, sid}
 }
 
-func (s *redisSignal) Redis() *redis.Client {
-	return s.server.RedisClient()
+func (s *noirPeer) Redis() *redis.Client {
+	return s.server.Redis()
 }
 
-func (s *redisSignal) SessionID() string {
+func (s *noirPeer) SessionID() string {
 	return s.sid
 }
 
-func (s *redisSignal) PeerID() string {
+func (s *noirPeer) PeerID() string {
 	return s.pid
 }
 
-func (s *redisSignal) Cleanup() {
-	r := s.server.RedisClient()
+func (s *noirPeer) Cleanup() {
+	r := s.Redis()
 	r.Del("peer-recv/" + s.pid)
 	r.Del("peer-send/" + s.pid)
 }
 
 // SFUPeerBus watches on peer-send/{pid} for messages from peer
-func (s *redisSignal) SFUPeerBus(p *sfu.Peer) {
-	r := s.server.RedisClient()
+func (s *noirPeer) Listen(p *sfu.Peer) {
+	r := s.Redis()
 
 	topic := "peer-send/" + s.pid
 

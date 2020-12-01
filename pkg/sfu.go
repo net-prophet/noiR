@@ -21,49 +21,45 @@ var (
 	SESSION_TIMEOUT = 10 * time.Second
 )
 
-// Signal represent the signals
-type RedisSignalServer interface {
-	RedisClient() *redis.Client
-	ID() string
 
-	SFUBus()
-	GetSessionNode(sid string) (string, error)
-	AttemptSessionLock(sid string) (string, error)
-	RefreshSessionExpiry(sid string)
+type noirSFU struct {
+	sfu.SFU
+	transport *redis.Client
+	nodeID    string
+}
+
+type NoirSFU interface {
+	sfu.TransportProvider
+	Redis() *redis.Client
 	SendToPeer(pid string, value interface{})
+	Listen()
 }
 
-type redisSignalServer struct {
-	ion    sfu.SFU
-	client *redis.Client
-	nodeID string
+// NewNoirSFU will create an object that represent the NoirSFU interface
+func NewNoirSFU(ion sfu.SFU, client *redis.Client, nodeID string) NoirSFU {
+	return &noirSFU{ion, client, nodeID}
 }
 
-// NewRedisSignal will create an object that represent the Signal interface
-func NewRedisSignalServer(ion sfu.SFU, client *redis.Client, nodeID string) RedisSignalServer {
-	return &redisSignalServer{ion, client, nodeID}
+func (s *noirSFU) Redis() *redis.Client {
+	return s.transport
 }
 
-func (s *redisSignalServer) RedisClient() *redis.Client {
-	return s.client
-}
-
-func (s *redisSignalServer) ID() string {
+func (s *noirSFU) ID() string {
 	return s.nodeID
 }
 
-// SFUBus is the redis topic `sfu/` (for messages to all SFU, join methods)
-func (s *redisSignalServer) SFUBus() {
-	r := s.client
+// Listen watches the redis topics `sfu/` and `sfu/{id}` for commands
+func (s *noirSFU) Listen() {
+	r := s.transport
 	topic := "sfu/" + s.nodeID
-	log.Infof("SFUBus listening on 'sfu/' and '%s'", topic)
+	log.Infof("Listening on topics 'sfu/' and '%s'", topic)
 
 	for {
 
 		message, err := r.BRPop(0, topic, "sfu/").Result()
 
 		if err != nil {
-			log.Errorf("sfu-bus: unrecognized %s", message)
+			log.Errorf("unrecognized %s", message)
 			continue
 		}
 
@@ -85,8 +81,8 @@ func (s *redisSignalServer) SFUBus() {
 	}
 }
 
-func (s *redisSignalServer) handleJoin(message []string) {
-	r := s.client
+func (s *noirSFU) handleJoin(message []string) {
+	r := s.transport
 	var rpcJoin RPCJoin
 
 	err := json.Unmarshal([]byte(message[1]), &rpcJoin)
@@ -110,9 +106,9 @@ func (s *redisSignalServer) handleJoin(message []string) {
 
 	log.Infof("joining room %s", rpcJoin.Params.Sid)
 
-	p := sfu.NewPeer(&s.ion)
+	p := *sfu.NewPeer(&s.SFU)
 
-	sig := NewRedisSignal(s, rpcJoin.Params.Pid, rpcJoin.Params.Sid)
+	sig := NewNoirPeer(s, rpcJoin.Params.Pid, rpcJoin.Params.Sid)
 
 	p.OnOffer = func(offer *webrtc.SessionDescription) {
 		message, _ := json.Marshal(Notify{"offer", offer, "2.0"})
@@ -137,12 +133,12 @@ func (s *redisSignalServer) handleJoin(message []string) {
 	// peer-recv/{id} channel is for peer to recieve messages
 	s.SendToPeer(rpcJoin.Params.Pid, reply)
 
-	go sig.SFUPeerBus(p)
+	go sig.Listen(&p)
 }
 
-func (s *redisSignalServer) handlePlay(message []string) {
+func (s *noirSFU) handlePlay(message []string) {
 	log.Infof("lets play %s", message[1])
-	r := s.RedisClient()
+	r := s.Redis()
 
 	var rpcPlay RPCPlay
 
@@ -372,15 +368,15 @@ func getPayloadType(m webrtc.MediaEngine, codecType webrtc.RTPCodecType, codecNa
 }
 
 // SessionExists tells you if any other node has the session key locked
-func (s *redisSignalServer) GetSessionNode(sid string) (string, error) {
-	r := s.client
+func (s *noirSFU) GetSessionNode(sid string) (string, error) {
+	r := s.transport
 	result, err := r.Get("session/" + sid).Result()
 	return result, err
 }
 
 // AttemptSessionLock returns true if no other node has a session lock, and locks the session
-func (s *redisSignalServer) AttemptSessionLock(sid string) (string, error) {
-	r := s.client
+func (s *noirSFU) AttemptSessionLock(sid string) (string, error) {
+	r := s.transport
 
 	sessionNode, err := s.GetSessionNode(sid)
 	if sessionNode == "" {
@@ -404,14 +400,14 @@ func (s *redisSignalServer) AttemptSessionLock(sid string) (string, error) {
 	return sessionNode, err
 }
 
-func (s *redisSignalServer) RefreshSessionExpiry(sid string) {
-	r := s.client
+func (s *noirSFU) RefreshSessionExpiry(sid string) {
+	r := s.transport
 	r.Expire("node/"+s.ID(), SESSION_TIMEOUT)
 	r.Expire("session/"+sid, SESSION_TIMEOUT)
 }
 
-func (s *redisSignalServer) SendToPeer(pid string, value interface{}) {
-	r := s.RedisClient()
+func (s *noirSFU) SendToPeer(pid string, value interface{}) {
+	r := s.Redis()
 	if pid != "" {
 		r.LPush("peer-recv/"+pid, value)
 		r.Expire("peer-recv/"+pid, 10*time.Second)

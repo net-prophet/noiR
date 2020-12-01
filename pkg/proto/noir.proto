@@ -8,18 +8,18 @@ package noir;
     NOIR COMMANDS API
  **************************************************** */
 service NoirSFU {
-    rpc Command(stream NoirRequest) returns (stream NoirReply) {}
+    rpc Admin(stream NoirRequest) returns (stream NoirReply) {}
 }
 
 message NoirRequest {
-    oneof payload {
+    oneof command {
       SignalRequest signal = 1;
       SessionRequest session = 2;
     }
 }
 
 message NoirReply {
-    oneof payload {
+    oneof command {
         SignalReply signal = 1;
         SessionReply session = 2;
         string error = 3;

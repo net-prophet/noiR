@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"math/rand"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -27,17 +28,18 @@ import (
 
 var (
 	conf         = sfu.Config{}
-	ctx          = context.Background()
-	file         string
-	redisURL     string
-	demoAddr     string
-	nodeID       string
-	cert         string
-	key          string
-	rpcAddr      string
-	SFU          *sfu.SFU
-	signalserver noir.RedisSignalServer
-	seededRand   *rand.Rand = rand.New(
+	ctx            = context.Background()
+	file           string
+	redisURL       string
+	demoAddr       string
+	grpcAddr       string
+	nodeID         string
+	cert           string
+	key            string
+	publicJrpcAddr string
+	adminJrpcAddr  string
+	SFU            noir.NoirSFU
+	seededRand     *rand.Rand = rand.New(
 		rand.NewSource(time.Now().UnixNano()))
 )
 
@@ -54,7 +56,9 @@ func showHelp() {
 	fmt.Println("      -u {redis url}")
 	fmt.Println("      -n {node id}")
 	fmt.Println("      -d {demo http addr}")
-	fmt.Println("      -j {jsonrpc addr}")
+	fmt.Println("      -j {public jsonrpc addr}")
+	fmt.Println("      -a {admin jsonrpc addr}")
+	fmt.Println("      -g {admin grpc addr}")
 	fmt.Println("      -h (show help info)")
 }
 
@@ -123,10 +127,12 @@ func load() bool {
 func parse() bool {
 	flag.StringVar(&file, "c", "/configs/sfu.toml", "config file")
 	flag.StringVar(&redisURL, "u", "localhost:6379", "redisURL to use")
-	flag.StringVar(&demoAddr, "d", "", "http addr to listen for demo")
-	flag.StringVar(&rpcAddr, "j", "", "jsonrpc addr to listen")
-	flag.StringVar(&cert, "cert", "", "jsonrpc https cert file")
-	flag.StringVar(&key, "key", "", "jsonrpc https key file")
+	flag.StringVar(&demoAddr, "d", ":7070", "http addr to listen for demo")
+	flag.StringVar(&publicJrpcAddr, "j", ":7000", "jsonrpc addr for public")
+	flag.StringVar(&adminJrpcAddr, "a", ":7001", "jsonrpc addr for admin")
+	flag.StringVar(&grpcAddr, "g", ":50051", "grpc addr for admin")
+	flag.StringVar(&cert, "cert", "", "public jsonrpc https cert file")
+	flag.StringVar(&key, "key", "", "public jsonrpc https key file")
 	flag.StringVar(&nodeID, "n", StringWithCharset(8, charset), "node ID to subscribe to")
 	help := flag.Bool("h", false, "help info")
 	flag.Parse()
@@ -152,7 +158,6 @@ func main() {
 	log.Init(conf.Log.Level, fixByFile, fixByFunc)
 
 	log.Infof("--- noiR SFU ---")
-	SFU = sfu.NewSFU(conf)
 
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     redisURL,
@@ -168,13 +173,21 @@ func main() {
 		log.Infof("can't connect to the redis database at %s, got error:\n%v", redisURL, err)
 	}
 
-	signalserver = noir.NewRedisSignalServer(*SFU, rdb, nodeID)
+	ion := sfu.NewSFU(conf)
 
-	if rpcAddr != "" {
-		go JSONRPC(signalserver)
+	SFU = noir.NewNoirSFU(*ion, rdb, nodeID)
+
+	if publicJrpcAddr != "" {
+		go publicJSONRPC(&SFU)
+	}
+	if adminJrpcAddr != "" {
+		go adminJSONRPC(&SFU)
+	}
+	if grpcAddr != "" {
+		go adminGRPC(&SFU)
 	}
 
-	go signalserver.SFUBus()
+	go SFU.Listen()
 	
 	if(demoAddr != "") {
 
@@ -182,7 +195,6 @@ func main() {
 		fs := http.FileServer(http.Dir("demo/"))
 		http.Handle("/", fs)
 	    http.ListenAndServe(demoAddr, nil)
-
 	}
 
 	for {
@@ -190,7 +202,54 @@ func main() {
 
 }
 
-func JSONRPC(signalserver noir.RedisSignalServer) {
+func publicJSONRPC(n *noir.NoirSFU) {
+	upgrader := websocket.Upgrader{
+		CheckOrigin: func(r *http.Request) bool {
+			return true
+		},
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+	}
+
+	public := http.NewServeMux()
+	public.Handle("/ws", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		c, err := upgrader.Upgrade(w, r, nil)
+		if err != nil {
+			panic(err)
+		}
+		defer c.Close()
+
+		pid := StringWithCharset(32, charset)
+
+		p := noir.NewClientJSONRPCBridge(
+			noir.NewNoirPeer(*n, pid, ""))
+
+		defer p.Close()
+
+		jc := jsonrpc2.NewConn(r.Context(), websocketjsonrpc2.NewObjectStream(c), p)
+		<-jc.DisconnectNotify()
+	}))
+
+	server := http.Server {
+		Addr: publicJrpcAddr,
+		Handler: public,
+	}
+
+	var err error
+	if key != "" && cert != "" {
+		log.Infof("listening at https://[%s]", publicJrpcAddr)
+		err = server.ListenAndServeTLS(cert, key)
+	} else {
+		log.Infof("listening at http://[%s]", publicJrpcAddr)
+		err = server.ListenAndServe()
+	}
+	if err != nil {
+		panic(err)
+	}
+
+}
+
+func adminJSONRPC(n *noir.NoirSFU) {
 	upgrader := websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
 			return true
@@ -206,10 +265,7 @@ func JSONRPC(signalserver noir.RedisSignalServer) {
 		}
 		defer c.Close()
 
-		pid := StringWithCharset(32, charset)
-
-		p := noir.NewJSONRedisSignal(
-			noir.NewRedisSignal(signalserver, pid, ""))
+		p := noir.NewAdminJSONRPC(n)
 
 		defer p.Close()
 
@@ -217,15 +273,21 @@ func JSONRPC(signalserver noir.RedisSignalServer) {
 		<-jc.DisconnectNotify()
 	}))
 
-	var err error
-	if key != "" && cert != "" {
-		log.Infof("Listening at https://[%s]", rpcAddr)
-		err = http.ListenAndServeTLS(rpcAddr, cert, key, nil)
-	} else {
-		log.Infof("Listening at http://[%s]", rpcAddr)
-		err = http.ListenAndServe(rpcAddr, nil)
-	}
+	log.Infof("listening at http://[%s]", adminJrpcAddr)
+	err := http.ListenAndServe(adminJrpcAddr, nil)
+	
 	if err != nil {
 		panic(err)
 	}
+
 }
+
+func adminGRPC(n *noir.NoirSFU) {
+	lis, _ := net.Listen("tcp", grpcAddr)
+	log.Infof("listening at %s", grpcAddr)
+	s := noir.NewGRPCServer(n)
+	if err := s.Serve(lis); err != nil {
+		log.Panicf("failed to serve: %v", err)
+	}
+}
+

@@ -11,16 +11,16 @@ import (
 	"github.com/sourcegraph/jsonrpc2"
 )
 
-type jsonRedisSignal struct {
-	RedisSignal
+type clientJSONRPCBridge struct {
+	NoirPeer
 }
 
-func NewJSONRedisSignal(r RedisSignal) *jsonRedisSignal {
-	return &jsonRedisSignal{r}
+func NewClientJSONRPCBridge(r NoirPeer) *clientJSONRPCBridge {
+	return &clientJSONRPCBridge{r}
 }
 
 // Handle incoming RPC call events like join, answer, offer and trickle
-func (s *jsonRedisSignal) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
+func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
 	r := s.Redis()
 	replyError := func(err error) {
 		_ = conn.ReplyWithError(ctx, req.ID, &jsonrpc2.Error{
@@ -50,7 +50,7 @@ func (s *jsonRedisSignal) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *
 
 		msg, err := json.Marshal(RPCCall{id, "join", join})
 
-		go s.RPCPeerBus(ctx, conn, req)
+		go s.Listen(ctx, conn, req)
 
 		r.LPush("sfu/", msg)
 
@@ -95,14 +95,14 @@ func (s *jsonRedisSignal) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *
 	//r.Expire("peer-send/"+s.PeerID(), 10*time.Second)
 }
 
-func (s *jsonRedisSignal) Close() {
+func (s *clientJSONRPCBridge) Close() {
 	r := s.Redis()
 	log.Infof("closing peer, sending kill message")
 	r.LPush("peer-send/"+s.PeerID(), "kill")
 	r.LPush("peer-recv/"+s.PeerID(), "kill")
 }
 
-func (s *jsonRedisSignal) RPCPeerBus(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
+func (s *clientJSONRPCBridge) Listen(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
 	r := s.Redis()
 	topic := "peer-recv/" + s.PeerID()
 	log.Infof("watch[%s] started", topic)

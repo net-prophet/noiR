@@ -17,7 +17,7 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type NoirSFUClient interface {
-	Command(ctx context.Context, opts ...grpc.CallOption) (NoirSFU_CommandClient, error)
+	Admin(ctx context.Context, opts ...grpc.CallOption) (NoirSFU_AdminClient, error)
 }
 
 type noirSFUClient struct {
@@ -28,30 +28,30 @@ func NewNoirSFUClient(cc grpc.ClientConnInterface) NoirSFUClient {
 	return &noirSFUClient{cc}
 }
 
-func (c *noirSFUClient) Command(ctx context.Context, opts ...grpc.CallOption) (NoirSFU_CommandClient, error) {
-	stream, err := c.cc.NewStream(ctx, &NoirSFU_ServiceDesc.Streams[0], "/noir.NoirSFU/Command", opts...)
+func (c *noirSFUClient) Admin(ctx context.Context, opts ...grpc.CallOption) (NoirSFU_AdminClient, error) {
+	stream, err := c.cc.NewStream(ctx, &NoirSFU_ServiceDesc.Streams[0], "/noir.NoirSFU/Admin", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &noirSFUCommandClient{stream}
+	x := &noirSFUAdminClient{stream}
 	return x, nil
 }
 
-type NoirSFU_CommandClient interface {
+type NoirSFU_AdminClient interface {
 	Send(*NoirRequest) error
 	Recv() (*NoirReply, error)
 	grpc.ClientStream
 }
 
-type noirSFUCommandClient struct {
+type noirSFUAdminClient struct {
 	grpc.ClientStream
 }
 
-func (x *noirSFUCommandClient) Send(m *NoirRequest) error {
+func (x *noirSFUAdminClient) Send(m *NoirRequest) error {
 	return x.ClientStream.SendMsg(m)
 }
 
-func (x *noirSFUCommandClient) Recv() (*NoirReply, error) {
+func (x *noirSFUAdminClient) Recv() (*NoirReply, error) {
 	m := new(NoirReply)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -63,7 +63,7 @@ func (x *noirSFUCommandClient) Recv() (*NoirReply, error) {
 // All implementations must embed UnimplementedNoirSFUServer
 // for forward compatibility
 type NoirSFUServer interface {
-	Command(NoirSFU_CommandServer) error
+	Admin(NoirSFU_AdminServer) error
 	mustEmbedUnimplementedNoirSFUServer()
 }
 
@@ -71,8 +71,8 @@ type NoirSFUServer interface {
 type UnimplementedNoirSFUServer struct {
 }
 
-func (UnimplementedNoirSFUServer) Command(NoirSFU_CommandServer) error {
-	return status.Errorf(codes.Unimplemented, "method Command not implemented")
+func (UnimplementedNoirSFUServer) Admin(NoirSFU_AdminServer) error {
+	return status.Errorf(codes.Unimplemented, "method Admin not implemented")
 }
 func (UnimplementedNoirSFUServer) mustEmbedUnimplementedNoirSFUServer() {}
 
@@ -87,25 +87,25 @@ func RegisterNoirSFUServer(s grpc.ServiceRegistrar, srv NoirSFUServer) {
 	s.RegisterService(&NoirSFU_ServiceDesc, srv)
 }
 
-func _NoirSFU_Command_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(NoirSFUServer).Command(&noirSFUCommandServer{stream})
+func _NoirSFU_Admin_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(NoirSFUServer).Admin(&noirSFUAdminServer{stream})
 }
 
-type NoirSFU_CommandServer interface {
+type NoirSFU_AdminServer interface {
 	Send(*NoirReply) error
 	Recv() (*NoirRequest, error)
 	grpc.ServerStream
 }
 
-type noirSFUCommandServer struct {
+type noirSFUAdminServer struct {
 	grpc.ServerStream
 }
 
-func (x *noirSFUCommandServer) Send(m *NoirReply) error {
+func (x *noirSFUAdminServer) Send(m *NoirReply) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *noirSFUCommandServer) Recv() (*NoirRequest, error) {
+func (x *noirSFUAdminServer) Recv() (*NoirRequest, error) {
 	m := new(NoirRequest)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -122,8 +122,8 @@ var NoirSFU_ServiceDesc = grpc.ServiceDesc{
 	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "Command",
-			Handler:       _NoirSFU_Command_Handler,
+			StreamName:    "Admin",
+			Handler:       _NoirSFU_Admin_Handler,
 			ServerStreams: true,
 			ClientStreams: true,
 		},

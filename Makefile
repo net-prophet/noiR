@@ -3,7 +3,7 @@ GO_VERSION = 1.14
 GO_TESTPKGS:=$(shell go list ./... | grep -v cmd | grep -v examples)
 CI_REGISTRY_IMAGE = ghcr.io/net-prophet/noir
 
-all: build
+all: docker demo
 
 go_init:
 	go mod download
@@ -15,10 +15,10 @@ protos:
 clean:
 	rm -rf bin
 
-build: go_init
+build: go_init protos
 	go build -o bin/noir $(GO_LDFLAGS) ./cmd/noir/main.go
 
-docker:
+docker: protos
 	docker build . -t ${CI_REGISTRY_IMAGE}:latest
 
 tag:
@@ -33,7 +33,7 @@ tag:
 demo_redis:
 	docker run -p 6379:6379 --name redis sameersbn/redis redis-cli
 
-readme_demo:
+demo:
 	echo "Starting local demonstration at http://localhost:7070" && docker run --net host ghcr.io/net-prophet/noir:latest -d :7070 -j :7000
 
 test: go_init
