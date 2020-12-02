@@ -5,18 +5,10 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"math/rand"
-	"net"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/go-redis/redis"
-	"github.com/gorilla/websocket"
-	"github.com/sourcegraph/jsonrpc2"
-
-	websocketjsonrpc2 "github.com/sourcegraph/jsonrpc2/websocket"
-
 	noir "github.com/net-prophet/noir/pkg"
 
 	"github.com/spf13/viper"
@@ -27,7 +19,7 @@ import (
 )
 
 var (
-	conf         = sfu.Config{}
+	conf           = sfu.Config{}
 	ctx            = context.Background()
 	file           string
 	redisURL       string
@@ -39,15 +31,10 @@ var (
 	publicJrpcAddr string
 	adminJrpcAddr  string
 	SFU            noir.NoirSFU
-	seededRand     *rand.Rand = rand.New(
-		rand.NewSource(time.Now().UnixNano()))
 )
 
 const (
 	portRangeLimit = 100
-
-	charset = "abcdefghijklmnopqrstuvwxyz" +
-		"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 )
 
 func showHelp() {
@@ -60,14 +47,6 @@ func showHelp() {
 	fmt.Println("      -a {admin jsonrpc addr}")
 	fmt.Println("      -g {admin grpc addr}")
 	fmt.Println("      -h (show help info)")
-}
-
-func StringWithCharset(length int, charset string) string {
-	b := make([]byte, length)
-	for i := range b {
-		b[i] = charset[seededRand.Intn(len(charset))]
-	}
-	return string(b)
 }
 
 type Command struct {
@@ -133,7 +112,7 @@ func parse() bool {
 	flag.StringVar(&grpcAddr, "g", ":50051", "grpc addr for admin")
 	flag.StringVar(&cert, "cert", "", "public jsonrpc https cert file")
 	flag.StringVar(&key, "key", "", "public jsonrpc https key file")
-	flag.StringVar(&nodeID, "n", StringWithCharset(8, charset), "node ID to subscribe to")
+	flag.StringVar(&nodeID, "n", "", "node ID to subscribe to")
 	help := flag.Bool("h", false, "help info")
 	flag.Parse()
 	if !load() {
@@ -178,116 +157,26 @@ func main() {
 	SFU = noir.NewNoirSFU(*ion, rdb, nodeID)
 
 	if publicJrpcAddr != "" {
-		go publicJSONRPC(&SFU)
+		go noir.PublicJSONRPC(&SFU, publicJrpcAddr, key, cert)
 	}
 	if adminJrpcAddr != "" {
-		go adminJSONRPC(&SFU)
+		go noir.AdminJSONRPC(&SFU, adminJrpcAddr)
 	}
 	if grpcAddr != "" {
-		go adminGRPC(&SFU)
+		go noir.AdminGRPC(&SFU, grpcAddr)
 	}
 
 	go SFU.Listen()
-	
-	if(demoAddr != "") {
+
+	if demoAddr != "" {
 
 		log.Infof("demo http server running at %s", demoAddr)
 		fs := http.FileServer(http.Dir("demo/"))
 		http.Handle("/", fs)
-	    http.ListenAndServe(demoAddr, nil)
+		http.ListenAndServe(demoAddr, nil)
 	}
 
 	for {
 	}
 
 }
-
-func publicJSONRPC(n *noir.NoirSFU) {
-	upgrader := websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool {
-			return true
-		},
-		ReadBufferSize:  1024,
-		WriteBufferSize: 1024,
-	}
-
-	public := http.NewServeMux()
-	public.Handle("/ws", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		c, err := upgrader.Upgrade(w, r, nil)
-		if err != nil {
-			panic(err)
-		}
-		defer c.Close()
-
-		pid := StringWithCharset(32, charset)
-
-		p := noir.NewClientJSONRPCBridge(
-			noir.NewNoirPeer(*n, pid, ""))
-
-		defer p.Close()
-
-		jc := jsonrpc2.NewConn(r.Context(), websocketjsonrpc2.NewObjectStream(c), p)
-		<-jc.DisconnectNotify()
-	}))
-
-	server := http.Server {
-		Addr: publicJrpcAddr,
-		Handler: public,
-	}
-
-	var err error
-	if key != "" && cert != "" {
-		log.Infof("listening at https://[%s]", publicJrpcAddr)
-		err = server.ListenAndServeTLS(cert, key)
-	} else {
-		log.Infof("listening at http://[%s]", publicJrpcAddr)
-		err = server.ListenAndServe()
-	}
-	if err != nil {
-		panic(err)
-	}
-
-}
-
-func adminJSONRPC(n *noir.NoirSFU) {
-	upgrader := websocket.Upgrader{
-		CheckOrigin: func(r *http.Request) bool {
-			return true
-		},
-		ReadBufferSize:  1024,
-		WriteBufferSize: 1024,
-	}
-
-	http.Handle("/ws", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		c, err := upgrader.Upgrade(w, r, nil)
-		if err != nil {
-			panic(err)
-		}
-		defer c.Close()
-
-		p := noir.NewAdminJSONRPC(n)
-
-		defer p.Close()
-
-		jc := jsonrpc2.NewConn(r.Context(), websocketjsonrpc2.NewObjectStream(c), p)
-		<-jc.DisconnectNotify()
-	}))
-
-	log.Infof("listening at http://[%s]", adminJrpcAddr)
-	err := http.ListenAndServe(adminJrpcAddr, nil)
-	
-	if err != nil {
-		panic(err)
-	}
-
-}
-
-func adminGRPC(n *noir.NoirSFU) {
-	lis, _ := net.Listen("tcp", grpcAddr)
-	log.Infof("listening at %s", grpcAddr)
-	s := noir.NewGRPCServer(n)
-	if err := s.Serve(lis); err != nil {
-		log.Panicf("failed to serve: %v", err)
-	}
-}
-

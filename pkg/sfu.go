@@ -37,7 +37,11 @@ type NoirSFU interface {
 
 // NewNoirSFU will create an object that represent the NoirSFU interface
 func NewNoirSFU(ion sfu.SFU, client *redis.Client, nodeID string) NoirSFU {
-	return &noirSFU{ion, client, nodeID}
+	id := nodeID
+	if id == "" {
+		id = RandomString(8)
+	}
+	return &noirSFU{ion, client, id }
 }
 
 func (s *noirSFU) Redis() *redis.Client {
@@ -123,7 +127,7 @@ func (s *noirSFU) handleJoin(message []string) {
 	answer, err := p.Join(rpcJoin.Params.Sid, rpcJoin.Params.Offer)
 
 	if err != nil {
-		log.Errorf("error joining %s %s", err)
+		log.Errorf("error joining %s", err)
 	} else {
 		log.Infof("peer %s joined session %s", rpcJoin.Params.Pid, rpcJoin.Params.Sid)
 	}
@@ -285,7 +289,7 @@ func (s *noirSFU) handlePlay(message []string) {
 	message, err = r.BRPop(0, topic).Result()
 	var result Result
 	if json.Unmarshal([]byte(message[1]), &result) != nil {
-		log.Errorf("error parsing rpc", message[1], result)
+		log.Errorf("error parsing rpc %s", message[1])
 	}
 
 	log.Infof("Got answer from sfu. Starting streaming for pid %s!\n", pid)
@@ -301,7 +305,7 @@ func (s *noirSFU) handlePlay(message []string) {
 	err = peerConnection.SetRemoteDescription(reply)
 
 	if err != nil {
-		log.Errorf("error using answer %s %s", err, reply)
+		log.Errorf("error using answer %s", err)
 		s.SendToPeer(pid, Notify{"error", err, "2.0"})
 		return
 	}
@@ -322,7 +326,7 @@ func (s *noirSFU) handlePlay(message []string) {
 
 		var rpc ResultOrNotify
 		if json.Unmarshal([]byte(message[1]), &rpc) != nil {
-			log.Errorf("error parsing rpc", message[1], rpc)
+			log.Errorf("error parsing rpc %s", message[1])
 		}
 
 		params, _ := json.Marshal(rpc.Params)
@@ -336,7 +340,7 @@ func (s *noirSFU) handlePlay(message []string) {
 			err := peerConnection.SetRemoteDescription(negotiation.Desc)
 
 			if err != nil {
-				log.Errorf("error using answer %s %s", err, negotiation.Desc)
+				log.Errorf("error using answer %s", err)
 				s.SendToPeer(pid, Notify{"error", err, "2.0"})
 				continue
 			}

@@ -70,7 +70,7 @@ func (s *noirPeer) Listen(p *sfu.Peer) {
 
 		var rpc ResultOrNotify
 		if json.Unmarshal([]byte(message[1]), &rpc) != nil {
-			log.Errorf("error parsing rpc", message[1], rpc)
+			log.Errorf("error parsing rpc %s %s", message[1], rpc)
 		}
 
 		params, _ := json.Marshal(rpc.Params)
@@ -97,7 +97,7 @@ func (s *noirPeer) Listen(p *sfu.Peer) {
 			err := p.SetRemoteDescription(negotiation.Desc)
 
 			if err != nil {
-				log.Errorf("error using answer %s %s", err, negotiation.Desc)
+				log.Errorf("error using answer %s", err)
 				s.server.SendToPeer(s.pid, Notify{"error", err, "2.0"})
 				continue
 			}
