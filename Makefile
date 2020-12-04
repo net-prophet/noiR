@@ -1,7 +1,7 @@
 GO_LDFLAGS = -ldflags "-s -w"
 GO_VERSION = 1.14
 GO_TESTPKGS:=$(shell go list ./... | grep -v cmd | grep -v examples)
-CI_REGISTRY_IMAGE = ghcr.io/net-prophet/noir
+CI_REGISTRY_IMAGE = docker.netprophet.tech/netp/noir
 
 all: docker demo
 
@@ -17,6 +17,10 @@ clean:
 
 build: go_init protos
 	go build -o bin/noir $(GO_LDFLAGS) ./cmd/noir/main.go
+
+run: 
+	echo "Running local demo: http://localhost:7070"
+	go run ./cmd/noir/main.go -c ./config.toml
 
 docker: protos
 	docker build . -t ${CI_REGISTRY_IMAGE}:latest

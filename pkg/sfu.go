@@ -21,7 +21,6 @@ var (
 	SESSION_TIMEOUT = 10 * time.Second
 )
 
-
 type noirSFU struct {
 	sfu.SFU
 	transport *redis.Client
@@ -296,7 +295,7 @@ func (s *noirSFU) handlePlay(message []string) {
 
 	var reply webrtc.SessionDescription
 	resultParams, _ := json.Marshal(result.Result)
-	if err = json.Unmarshal(resultParams, &reply) ; err != nil {
+	if err = json.Unmarshal(resultParams, &reply); err != nil {
 		log.Errorf("error unmarshaling %s %s", err, resultParams)
 		s.SendToPeer(pid, Notify{"error", err, "2.0"})
 		return

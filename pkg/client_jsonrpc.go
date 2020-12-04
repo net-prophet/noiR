@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/net-prophet/noir/pkg/proto"
 	strings "strings"
 
 	log "github.com/pion/ion-log"
@@ -17,6 +18,11 @@ type clientJSONRPCBridge struct {
 
 func NewClientJSONRPCBridge(r NoirPeer) *clientJSONRPCBridge {
 	return &clientJSONRPCBridge{r}
+}
+
+func MakeSignalRequest(req *proto.SignalRequest) *proto.NoirRequest {
+	return &proto.NoirRequest{
+		Command: &proto.NoirRequest_Signal{req}}
 }
 
 // Handle incoming RPC call events like join, answer, offer and trickle
@@ -45,10 +51,16 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 			break
 		}
 
-		join.Pid = s.PeerID()
-		log.Infof("PEER JOIN %s", join.Pid)
+		request := MakeSignalRequest(
+			&proto.SignalRequest{
+				Id: id,
+				Payload: &proto.SignalRequest_Join{&proto.JoinRequest{
+					Sid:         join.Sid,
+					Description: []byte(join.Offer.SDP),
+				},
+				}})
 
-		msg, err := json.Marshal(RPCCall{id, "join", join})
+		msg, err := json.Marshal(request)
 
 		go s.Listen(ctx, conn, req)
 
