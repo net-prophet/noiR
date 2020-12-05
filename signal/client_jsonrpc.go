@@ -1,9 +1,10 @@
-package pkg
+package signal
 
 import (
 	"context"
 	"encoding/json"
 	"fmt"
+	noir "github.com/net-prophet/noir/pkg"
 	"github.com/net-prophet/noir/pkg/proto"
 	strings "strings"
 
@@ -13,16 +14,11 @@ import (
 )
 
 type clientJSONRPCBridge struct {
-	NoirPeer
+	noir.NoirPeer
 }
 
-func NewClientJSONRPCBridge(r NoirPeer) *clientJSONRPCBridge {
+func NewClientJSONRPCBridge(r noir.NoirPeer) *clientJSONRPCBridge {
 	return &clientJSONRPCBridge{r}
-}
-
-func MakeSignalRequest(req *proto.SignalRequest) *proto.NoirRequest {
-	return &proto.NoirRequest{
-		Command: &proto.NoirRequest_Signal{req}}
 }
 
 // Handle incoming RPC call events like join, answer, offer and trickle
@@ -37,14 +33,13 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 	// TODO: why is this wrapped in quotes?
 
 	request_id := strings.Replace(req.ID.String(), "\"", "", -1)
-	peer_id := RandomString(32)
-
+	peer_id := noir.RandomString(32)
 
 	switch req.Method {
 
 	case "join":
 
-		var join Join
+		var join noir.Join
 		err := json.Unmarshal(*req.Params, &join)
 
 		if err != nil {
@@ -53,15 +48,18 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 			break
 		}
 
-		request := MakeSignalRequest(
-			&proto.SignalRequest{
-				// SignalRequest.id should be called pid but we are ion-sfu compatible
-				Id: peer_id,
-				Payload: &proto.SignalRequest_Join{&proto.JoinRequest{
-					Sid:         join.Sid,
-					Description: []byte(join.Offer.SDP),
+		request := &proto.NoirRequest{
+			Command: &proto.NoirRequest_Signal{
+				Signal: &proto.SignalRequest{
+					// SignalRequest.id should be called pid but we are ion-sfu compatible
+					Id: peer_id,
+					Payload: &proto.SignalRequest_Join{&proto.JoinRequest{
+						Sid:         join.Sid,
+						Description: []byte(join.Offer.SDP),
+					},
+					},
 				},
-				}})
+			}}
 
 		msg, err := json.Marshal(request)
 
@@ -70,7 +68,7 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 		r.LPush("sfu/", msg)
 
 	case "offer":
-		var negotiation Negotiation
+		var negotiation noir.Negotiation
 		err := json.Unmarshal(*req.Params, &negotiation)
 		if err != nil {
 			log.Errorf("connect: error parsing offer: %v", err)
@@ -78,29 +76,29 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 			break
 		}
 
-		message, _ := json.Marshal(RPCCall{request_id, "offer", negotiation})
+		message, _ := json.Marshal(noir.RPCCall{request_id, "offer", negotiation})
 		r.LPush("peer-send/"+s.PeerID(), message)
 
 	case "answer":
-		var negotiation Negotiation
+		var negotiation noir.Negotiation
 		err := json.Unmarshal(*req.Params, &negotiation)
 		if err != nil {
 			log.Errorf("connect: error parsing offer: %v", err)
 			replyError(err)
 			break
 		}
-		message, _ := json.Marshal(Notify{"answer", negotiation, "2.0"})
+		message, _ := json.Marshal(noir.Notify{"answer", negotiation, "2.0"})
 		r.LPush("peer-send/"+s.PeerID(), message)
 
 	case "trickle":
-		var trickle Trickle
+		var trickle noir.Trickle
 		err := json.Unmarshal(*req.Params, &trickle)
 		if err != nil {
 			log.Errorf("connect: error parsing candidate: %v", err)
 			replyError(err)
 			break
 		}
-		if message, err := json.Marshal(Notify{"trickle", trickle, "2.0"}); err != nil {
+		if message, err := json.Marshal(noir.Notify{"trickle", trickle, "2.0"}); err != nil {
 			log.Errorf("error parsing message")
 		} else {
 			r.LPush("peer-send/"+s.PeerID(), message)
@@ -135,7 +133,7 @@ func (s *clientJSONRPCBridge) Listen(ctx context.Context, conn *jsonrpc2.Conn, r
 			return
 		}
 
-		var rpc ResultOrNotify
+		var rpc noir.ResultOrNotify
 
 		if err := json.Unmarshal([]byte(message[1]), &rpc); err != nil {
 			log.Errorf("failed to unmarshal rpc %s", message[1])
@@ -180,7 +178,7 @@ func (s *clientJSONRPCBridge) Listen(ctx context.Context, conn *jsonrpc2.Conn, r
 		}
 
 		if rpc.Method == "trickle" {
-			var trickle Trickle
+			var trickle noir.Trickle
 			if err := json.Unmarshal(packed, &trickle); err != nil {
 				log.Errorf("failed to unmarshal trickle %s %s", err, packed)
 				continue

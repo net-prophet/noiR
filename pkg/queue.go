@@ -1,4 +1,4 @@
-package pkg
+package noir
 
 import (
 "github.com/go-redis/redis"

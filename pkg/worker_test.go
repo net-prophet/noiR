@@ -1,4 +1,4 @@
-package pkg
+package noir
 
 import (
 	"github.com/net-prophet/noir/pkg/proto"

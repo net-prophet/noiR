@@ -1,4 +1,4 @@
-package pkg
+package noir
 
 import (
 	pb "github.com/net-prophet/noir/pkg/proto"
@@ -52,15 +52,19 @@ func TestRouterReadAction(t *testing.T) {
 		request *pb.NoirRequest
 		want    string
 	}{
-		{MakeSignalRequest(&pb.SignalRequest{
-			Id: "123",
-			Payload: &pb.SignalRequest_Join{
-				Join: &pb.JoinRequest{
-					Sid:         "test",
-					Description: nil,
+		{&pb.NoirRequest{
+			Command: &pb.NoirRequest_Signal{
+				Signal: &pb.SignalRequest{
+					Id: "123",
+					Payload: &pb.SignalRequest_Join{
+						Join: &pb.JoinRequest{
+							Sid:         "test",
+							Description: nil,
+						},
+					},
 				},
 			},
-		}), "request.signal.join"},
+		}, "request.signal.join"},
 	}
 
 	for _, tt := range tests {

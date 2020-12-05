@@ -1,7 +1,8 @@
-package pkg
+package signal
 
 import (
 	"github.com/gorilla/websocket"
+	"github.com/net-prophet/noir/pkg"
 	log "github.com/pion/ion-log"
 	"github.com/sourcegraph/jsonrpc2"
 	websocketjsonrpc2 "github.com/sourcegraph/jsonrpc2/websocket"
@@ -11,7 +12,7 @@ import (
 // server.go contains public API handlers
 
 
-func PublicJSONRPC(n *NoirSFU, publicJrpcAddr string, key string, cert string) {
+func PublicJSONRPC(n *noir.NoirSFU, publicJrpcAddr string, key string, cert string) {
 	upgrader := websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
 			return true
@@ -28,10 +29,10 @@ func PublicJSONRPC(n *NoirSFU, publicJrpcAddr string, key string, cert string) {
 		}
 		defer c.Close()
 
-		pid := RandomString(32)
+		pid := noir.RandomString(32)
 
 		p := NewClientJSONRPCBridge(
-			NewNoirPeer(*n, pid, ""))
+			noir.NewNoirPeer(*n, pid, ""))
 
 		defer p.Close()
 
@@ -58,7 +59,7 @@ func PublicJSONRPC(n *NoirSFU, publicJrpcAddr string, key string, cert string) {
 
 }
 
-func AdminJSONRPC(n *NoirSFU, adminJrpcAddr string) {
+func AdminJSONRPC(n *noir.NoirSFU, adminJrpcAddr string) {
 	upgrader := websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
 			return true
@@ -91,7 +92,7 @@ func AdminJSONRPC(n *NoirSFU, adminJrpcAddr string) {
 
 }
 
-func AdminGRPC(n *NoirSFU, grpcAddr string) {
+func AdminGRPC(n *noir.NoirSFU, grpcAddr string) {
 	lis, _ := net.Listen("tcp", grpcAddr)
 	log.Infof("listening at %s", grpcAddr)
 	s := NewGRPCServer(n)

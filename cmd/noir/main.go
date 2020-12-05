@@ -5,6 +5,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"github.com/net-prophet/noir/signal"
 	"net/http"
 	"os"
 
@@ -157,13 +158,13 @@ func main() {
 	SFU = noir.NewNoirSFU(*ion, rdb, nodeID)
 
 	if publicJrpcAddr != "" {
-		go noir.PublicJSONRPC(&SFU, publicJrpcAddr, key, cert)
+		go signal.PublicJSONRPC(&SFU, publicJrpcAddr, key, cert)
 	}
 	if adminJrpcAddr != "" {
-		go noir.AdminJSONRPC(&SFU, adminJrpcAddr)
+		go signal.AdminJSONRPC(&SFU, adminJrpcAddr)
 	}
 	if grpcAddr != "" {
-		go noir.AdminGRPC(&SFU, grpcAddr)
+		go signal.AdminGRPC(&SFU, grpcAddr)
 	}
 
 	go SFU.Listen()
