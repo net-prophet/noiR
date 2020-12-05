@@ -12,17 +12,22 @@ service NoirSFU {
 }
 
 message NoirRequest {
+    string id = 1;
+    string at = 2;
+    string action = 3;
     oneof command {
-      SignalRequest signal = 1;
-      SessionRequest session = 2;
+      SignalRequest signal = 4;
+      SessionRequest session = 5;
     }
 }
 
 message NoirReply {
+    string id = 1;
+    string at = 2;
     oneof command {
-        SignalReply signal = 1;
-        SessionReply session = 2;
-        string error = 3;
+        SignalReply signal = 3;
+        SessionReply session = 4;
+        string error = 5;
     }
 }
 
@@ -73,7 +78,7 @@ message PlayFileReply {
     1 SIGNAL = 1 CLIENT CONNECTION
  **************************************************** */
 message SignalRequest {
-    string id = 1; // peer id
+    string id = 1; // SignalRequest.id should be called pid but we are ion-sfu compatible
     oneof payload {
         JoinRequest join = 2;
         bytes description = 3;

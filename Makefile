@@ -10,7 +10,7 @@ go_init:
 	go generate ./...
 
 protos:
-	docker build -t protoc-builder ./pkg/proto && docker run -v $(CURDIR):/workspace protoc-builder protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative pkg/proto/noir.proto
+	docker build -t protoc-builder ./pkg/proto && docker run -v $(CURDIR):/workspace protoc-builder protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative pkg/proto/noir.proto pkg/proto/health.proto
 
 clean:
 	rm -rf bin

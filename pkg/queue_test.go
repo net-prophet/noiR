@@ -1,26 +1,11 @@
 package pkg
 
 import (
-	"github.com/go-redis/redis"
-	"os"
 	"strconv"
 	"testing"
-	"time"
 )
-func MakeTestQueue(topic string) Queue {
-	if os.Getenv("TEST_REDIS") != "" {
-		rdb := redis.NewClient(&redis.Options{
-			Addr:     os.Getenv("TEST_REDIS"),
-			Password: "",
-			DB:       0,
-		})
-		return NewRedisQueue(rdb, topic, 60 * time.Second)
-	} else {
-		return NewListQueue()
-	}
-}
 
-func TestAdd(t *testing.T) {
+func TestQueueAdd(t *testing.T) {
 	addTests := []struct {
 		add  []string
 		want int64
@@ -31,10 +16,10 @@ func TestAdd(t *testing.T) {
 	}
 
 	for n, tt := range addTests {
-		queue := MakeTestQueue("test-next/"+strconv.Itoa(n))
+		queue := MakeTestQueue("tests/queue/add/"+strconv.Itoa(n))
 
 		for _, msg := range tt.add {
-			if err := queue.Add(msg); err != nil {
+			if err := queue.Add([]byte(msg)); err != nil {
 				t.Errorf("Error adding %s to queue: %s", msg, err)
 
 			}
@@ -54,7 +39,7 @@ func TestAdd(t *testing.T) {
 	}
 }
 
-func TestNext(t *testing.T) {
+func TestQueueNext(t *testing.T) {
 
 	addTests := []struct {
 		add  []string
@@ -66,9 +51,9 @@ func TestNext(t *testing.T) {
 	}
 
 	for n, tt := range addTests {
-		queue := MakeTestQueue("test-next/"+strconv.Itoa(n))
+		queue := MakeTestQueue("tests/queue/next/"+strconv.Itoa(n))
 		for _, msg := range tt.add {
-			if err := queue.Add(msg); err != nil {
+			if err := queue.Add([]byte(msg)); err != nil {
 				t.Errorf("Error adding %s to queue: %s", msg, err)
 			}
 		}
@@ -78,7 +63,7 @@ func TestNext(t *testing.T) {
 			if err != nil {
 				t.Errorf("Error getting next %s", err)
 			}
-			if got != want {
+			if string(got) != want {
 				t.Errorf("got %s want %s", got, want)
 			}
 		}
@@ -88,41 +73,4 @@ func TestNext(t *testing.T) {
 		}
 
 	}
-}
-
-// listQueue is a queue for the tests!
-type listQueue struct {
-	messages []string
-}
-
-func NewListQueue() Queue {
-	return &listQueue{}
-}
-
-func (q *listQueue) Add(value string) error {
-	q.messages = append(q.messages, value)
-	return nil
-}
-
-func (q *listQueue) Cleanup() error {
-	q.messages = []string{}
-	return nil
-}
-
-func (q *listQueue) Next() (string, error) {
-	count, _ := q.Count()
-	if count > 0 {
-		next := q.messages[0]
-		q.messages = q.messages[1:]
-		return next, nil
-	}
-	return "", nil
-}
-
-func (q *listQueue) BlockUntilNext(timeout time.Duration) (string, error) {
-	return q.Next()
-}
-
-func (q *listQueue) Count() (int64, error) {
-	return int64(len(q.messages)), nil
 }

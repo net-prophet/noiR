@@ -36,7 +36,9 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 	}
 	// TODO: why is this wrapped in quotes?
 
-	id := strings.Replace(req.ID.String(), "\"", "", -1)
+	request_id := strings.Replace(req.ID.String(), "\"", "", -1)
+	peer_id := RandomString(32)
+
 
 	switch req.Method {
 
@@ -53,7 +55,8 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 
 		request := MakeSignalRequest(
 			&proto.SignalRequest{
-				Id: id,
+				// SignalRequest.id should be called pid but we are ion-sfu compatible
+				Id: peer_id,
 				Payload: &proto.SignalRequest_Join{&proto.JoinRequest{
 					Sid:         join.Sid,
 					Description: []byte(join.Offer.SDP),
@@ -75,7 +78,7 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 			break
 		}
 
-		message, _ := json.Marshal(RPCCall{id, "offer", negotiation})
+		message, _ := json.Marshal(RPCCall{request_id, "offer", negotiation})
 		r.LPush("peer-send/"+s.PeerID(), message)
 
 	case "answer":

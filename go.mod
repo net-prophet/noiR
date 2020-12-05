@@ -4,6 +4,8 @@ go 1.13
 
 require (
 	github.com/go-redis/redis v6.15.9+incompatible
+	github.com/gogo/protobuf v1.2.1
+	github.com/golang/protobuf v1.4.3
 	github.com/gorilla/websocket v1.4.2
 	github.com/pion/ion-log v1.0.0
 	github.com/pion/ion-sfu v1.5.1
