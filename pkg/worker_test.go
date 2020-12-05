@@ -8,22 +8,25 @@ import (
 )
 
 func TestWorkerJoin(t *testing.T) {
-	ion := sfu.NewSFU(sfu.Config{Log: log.Config{Level: "trace"}})
-	queue := MakeTestQueue("worker/")
-	worker := &worker{"test", ion, queue}
-	request := &proto.NoirRequest{
-		Command: &proto.NoirRequest_Signal{
-			Signal: &proto.SignalRequest{
-				Id: "123",
-				Payload: &proto.SignalRequest_Join{
-					Join: &proto.JoinRequest{
-						Sid: "test",
-						Description: []byte{},
+	for _, driver := range MakeTestDrivers() {
+
+		ion := sfu.NewSFU(sfu.Config{Log: log.Config{Level: "trace"}})
+		queue := MakeTestQueue(driver, "worker/")
+		worker := &worker{"test", ion, queue}
+		request := &proto.NoirRequest{
+			Command: &proto.NoirRequest_Signal{
+				Signal: &proto.SignalRequest{
+					Id: "123",
+					Payload: &proto.SignalRequest_Join{
+						Join: &proto.JoinRequest{
+							Sid:         "test",
+							Description: []byte{},
+						},
 					},
 				},
 			},
-		},
+		}
+		EnqueueRequest(queue, request)
+		worker.HandleNext()
 	}
-	EnqueueRequest(queue, request)
-	worker.HandleNext()
 }

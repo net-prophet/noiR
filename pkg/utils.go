@@ -72,6 +72,7 @@ func FillDefaults(value *pb.NoirRequest) {
 }
 
 func MarshalRequest(value *pb.NoirRequest) ([]byte, error) {
+	FillDefaults(value)
 	return proto.Marshal(value)
 }
 
@@ -89,9 +90,16 @@ func EnqueueRequest(queue Queue, value *pb.NoirRequest) error {
 }
 
 // TEST UTILS
-
-func MakeTestQueue(topic string) Queue {
+func MakeTestDrivers() []string {
+	drivers := []string{"locmem",}
 	if os.Getenv("TEST_REDIS") != "" {
+		drivers = append(drivers, os.Getenv("TEST_REDIS"))
+	}
+	return drivers
+}
+
+func MakeTestQueue(redisUrl string, topic string) Queue {
+	if redisUrl != "" && redisUrl != "locmem" {
 		rdb := redis.NewClient(&redis.Options{
 			Addr:     os.Getenv("TEST_REDIS"),
 			Password: "",

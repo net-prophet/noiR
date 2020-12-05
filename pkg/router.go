@@ -1,16 +1,16 @@
 package noir
 
 import (
-	"encoding/json"
 	"github.com/go-redis/redis"
-	"github.com/net-prophet/noir/pkg/proto"
+	pb "github.com/net-prophet/noir/pkg/proto"
 	log "github.com/pion/ion-log"
 )
 
 type Router interface {
+	GetQueue() *Queue
 	HandleNext() error
-	Handle(*proto.NoirRequest) error
-	NextCommand() (*proto.NoirRequest, error)
+	Handle(*pb.NoirRequest) error
+	NextCommand() (*pb.NoirRequest, error)
 }
 
 type router struct {
@@ -38,24 +38,24 @@ func (r *router) HandleNext() error {
 	}
 	return r.Handle(request)
 }
-func (r *router) NextCommand() (*proto.NoirRequest, error) {
-	msg, msg_err := r.queue.BlockUntilNext(0)
-	if msg_err != nil {
-		log.Errorf("queue error %s", msg_err)
-		return nil, msg_err
+func (r *router) NextCommand() (*pb.NoirRequest, error) {
+	msg, popErr := r.queue.BlockUntilNext(0)
+	if popErr != nil {
+		log.Errorf("queue error %s", popErr)
+		return nil, popErr
 	}
 
-	var request proto.NoirRequest
+	var request pb.NoirRequest
 	log.Infof("unpacking %s", msg)
-	j_err := json.Unmarshal(msg, &request)
-	if j_err != nil {
-		log.Errorf("message parse error %s", j_err)
-		return nil, j_err
+	p_err := UnmarshalRequest(msg, &request)
+	if p_err != nil {
+		log.Errorf("message parse error %s", p_err)
+		return nil, p_err
 	}
 	return &request, nil
 }
 
-func (r *router) Handle(request *proto.NoirRequest) error {
+func (r *router) Handle(request *pb.NoirRequest) error {
 	target, healthErr := r.health.FirstAvailableWorkerID(request.Action)
 
 	queue := r.health.GetWorkerQueue(target)
@@ -65,7 +65,7 @@ func (r *router) Handle(request *proto.NoirRequest) error {
 		return healthErr
 	}
 
-	queueErr := EnqueueRequest(queue, request)
+	queueErr := EnqueueRequest(*queue, request)
 
 	if queueErr != nil {
 		log.Errorf("error sending to worker %s", queueErr)
@@ -73,4 +73,8 @@ func (r *router) Handle(request *proto.NoirRequest) error {
 	}
 
 	return nil
+}
+
+func (r *router) GetQueue() *Queue {
+	return &r.queue
 }

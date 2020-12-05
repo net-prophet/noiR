@@ -35,10 +35,13 @@ tag:
 		  || echo "usage: make tag TAG=..."
 
 demo_redis:
-	docker run -p 6379:6379 --name redis sameersbn/redis redis-cli
+	docker run -d --rm -p 6379:6379 --name noir-redis sameersbn/redis
 
 demo:
 	echo "Starting local demonstration at http://localhost:7070" && docker run --net host ghcr.io/net-prophet/noir:latest -d :7070 -j :7000
+
+test_with_redis:
+	TEST_REDIS=:6379 make test
 
 test: go_init
 	go test \

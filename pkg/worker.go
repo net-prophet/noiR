@@ -15,7 +15,7 @@ const (
 type Worker interface {
 	Run()
 	HandleNext()
-	GetQueue() Queue
+	GetQueue() *Queue
 	ID() string
 }
 
@@ -24,7 +24,7 @@ type Worker interface {
 type worker struct {
 	id       string
 	sfu      *sfu.SFU
-	commands Queue
+	in Queue
 }
 
 func NewRedisWorkerQueue(client *redis.Client, id string) Queue {
@@ -59,6 +59,6 @@ func (w *worker) HandleNext() {
 func (w *worker) ID() string {
 	return w.id
 }
-func (w *worker) GetQueue() Queue {
-	return w.commands
+func (w *worker) GetQueue() *Queue {
+	return &w.in
 }

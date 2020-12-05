@@ -1,12 +1,12 @@
 package noir
 
 import (
-	"encoding/json"
 	"errors"
 	"github.com/go-redis/redis"
-	"github.com/gogo/protobuf/proto"
+	"github.com/golang/protobuf/proto"
 	pb "github.com/net-prophet/noir/pkg/proto"
 	log "github.com/pion/ion-log"
+	sfu "github.com/pion/ion-sfu/pkg"
 	"math/rand"
 	"os"
 	"time"
@@ -21,9 +21,9 @@ const (
 type Health interface {
 	FirstAvailableWorkerID(string) (string, error)
 	Checkin(worker *Worker) error
-	UpdateAvailableWorkers()
-	WorkerCount() (int64, error)
-	GetWorkerQueue(string) Queue
+	UpdateAvailableWorkers() error
+	WorkerCount() int
+	GetWorkerQueue(string) *Queue
 	Cleanup()
 }
 
@@ -34,16 +34,22 @@ type redisHealth struct {
 }
 
 func NewRedisHealth(redis *redis.Client) Health {
-	return &redisHealth{redis: redis, workers: nil, updated: time.Now().Add(-1 * UpdateFrequency)}
+	return &redisHealth{redis: redis, workers: map[string]pb.WorkerStatus{}, updated: time.Now().Add(-1 * UpdateFrequency)}
 }
 
 func (h *redisHealth) Checkin(worker *Worker) error {
 	id := (*worker).ID()
-	value, err := proto.Marshal(&pb.WorkerStatus{Id: id})
+	status := &pb.WorkerStatus{Id: id, At: time.Now().String()}
+	value, err := proto.Marshal(status)
 	if err != nil {
 		return err
 	}
-	return h.redis.HSet(WorkersKey, id, value).Err()
+	err = h.redis.HSet(WorkersKey, id, value).Err()
+	if err != nil {
+		return err
+	}
+	h.workers[id] = *status
+	return nil
 }
 
 func (h *redisHealth) RandomWorkerId() string {
@@ -54,14 +60,12 @@ func (h *redisHealth) RandomWorkerId() string {
 	return ids[rand.Intn(len(ids))]
 }
 
-func (h *redisHealth) GetWorkerQueue(id string) Queue {
-	return NewRedisWorkerQueue(h.redis, id)
+func (h *redisHealth) GetWorkerQueue(id string) *Queue {
+	queue := NewRedisWorkerQueue(h.redis, id)
+	return &queue
 }
 
 func (h *redisHealth) FirstAvailableWorkerID(action string) (string, error) {
-	if time.Now().Sub(h.updated) > UpdateFrequency {
-		h.UpdateAvailableWorkers()
-	}
 	id := h.RandomWorkerId()
 	if id == "" {
 		return "", errors.New("no workers available")
@@ -69,33 +73,39 @@ func (h *redisHealth) FirstAvailableWorkerID(action string) (string, error) {
 	return id, nil
 }
 
-func (h *redisHealth) UpdateAvailableWorkers() {
+func (h *redisHealth) UpdateAvailableWorkers() error {
 	ids, err := h.redis.HKeys(WorkersKey).Result()
 	if err != nil {
 		log.Errorf("error getting workers from redis %s", err)
-		panic("aborting")
+		return err
 	}
 
-	h.workers = map[string]pb.WorkerStatus{}
 	for _, id := range ids {
 		status, err := h.redis.HGet(WorkersKey, id).Result()
 		if err != nil {
 			log.Errorf("error getting worker status %s", err)
-			panic("aborting")
+			return err
 		}
 
-		if err := json.Unmarshal([]byte(status), h.workers[id]); err != nil {
+		log.Warnf("decoding %s", status)
+
+
+		var decode pb.WorkerStatus
+
+		if err := proto.Unmarshal([]byte(status), &decode); err != nil {
 			log.Errorf("error decoding worker status, ignoring worker %s", err)
 			delete(h.workers, id)
 			continue
 		}
+		h.workers[id] = decode
 	}
 
 	h.updated = time.Now()
+	return nil
 }
 
-func (h *redisHealth) WorkerCount() (int64, error) {
-	return h.redis.HLen(WorkersKey).Result()
+func (h *redisHealth) WorkerCount() (int) {
+	return len(h.workers)
 }
 
 func (h *redisHealth) Cleanup() {
@@ -105,8 +115,8 @@ func (h *redisHealth) Cleanup() {
 
 // Local Memory Health
 
-func NewTestHealth() Health {
-	if os.Getenv("TEST_REDIS") != "" {
+func NewTestHealth(driver string) Health {
+	if driver != "" && driver != "locmem" {
 		rdb := redis.NewClient(&redis.Options{
 			Addr:     os.Getenv("TEST_REDIS"),
 			Password: "",
@@ -142,7 +152,7 @@ func (h *locmemHealth) FirstAvailableWorkerID(string) (string, error) {
 	return "", errors.New("0 workers")
 }
 
-func (h *locmemHealth) GetWorkerQueue(id string) Queue {
+func (h *locmemHealth) GetWorkerQueue(id string) *Queue {
 	return (*h.workers[id].worker).GetQueue()
 }
 
@@ -151,14 +161,31 @@ func (h *locmemHealth) Checkin(worker *Worker) error {
 	return nil
 }
 
-func (h *locmemHealth) WorkerCount() (int64, error) {
-	return int64(len(h.workers)), nil
+func (h *locmemHealth) WorkerCount() int {
+	return len(h.workers)
 }
 
-func (h *locmemHealth) UpdateAvailableWorkers() {
-
+func (h *locmemHealth) UpdateAvailableWorkers() error {
+	return nil
 }
 
 func (h *locmemHealth) Cleanup() {
 
+}
+
+
+// HEALTH TEST UTILITIES
+func NewTestSetup(driver string) (Health, Worker, Router, *sfu.SFU) {
+	ion := sfu.NewSFU(sfu.Config{Log: log.Config{Level: "trace"}})
+	routerQueue := MakeTestQueue(driver, "router/route/router")
+	routerQueue.Cleanup()
+	workerQueue := MakeTestQueue(driver, "noir/test-worker")
+	workerQueue.Cleanup()
+	worker := NewWorker("test-worker", ion, workerQueue)
+	health := NewTestHealth(driver)
+	health.Cleanup()
+	health.Checkin(&worker)
+	router := MakeRouter(routerQueue, health)
+
+	return health, worker, router, ion
 }

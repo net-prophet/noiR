@@ -9,7 +9,6 @@ import (
 	strings "strings"
 
 	log "github.com/pion/ion-log"
-	"github.com/pion/webrtc/v3"
 	"github.com/sourcegraph/jsonrpc2"
 )
 
@@ -23,7 +22,6 @@ func NewClientJSONRPCBridge(r noir.NoirPeer) *clientJSONRPCBridge {
 
 // Handle incoming RPC call events like join, answer, offer and trickle
 func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
-	r := s.Redis()
 	replyError := func(err error) {
 		_ = conn.ReplyWithError(ctx, req.ID, &jsonrpc2.Error{
 			Code:    500,
@@ -61,11 +59,9 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 				},
 			}}
 
-		msg, err := json.Marshal(request)
+		json.Marshal(request)
 
 		go s.Listen(ctx, conn, req)
-
-		r.LPush("sfu/", msg)
 
 	case "offer":
 		var negotiation noir.Negotiation
@@ -76,8 +72,8 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 			break
 		}
 
-		message, _ := json.Marshal(noir.RPCCall{request_id, "offer", negotiation})
-		r.LPush("peer-send/"+s.PeerID(), message)
+		json.Marshal(noir.RPCCall{request_id, "offer", negotiation})
+		//r.LPush("peer-send/"+s.PeerID(), message)
 
 	case "answer":
 		var negotiation noir.Negotiation
@@ -87,8 +83,8 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 			replyError(err)
 			break
 		}
-		message, _ := json.Marshal(noir.Notify{"answer", negotiation, "2.0"})
-		r.LPush("peer-send/"+s.PeerID(), message)
+		json.Marshal(noir.Notify{"answer", negotiation, "2.0"})
+		//r.LPush("peer-send/"+s.PeerID(), message)
 
 	case "trickle":
 		var trickle noir.Trickle
@@ -98,10 +94,10 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 			replyError(err)
 			break
 		}
-		if message, err := json.Marshal(noir.Notify{"trickle", trickle, "2.0"}); err != nil {
+		if _, err := json.Marshal(noir.Notify{"trickle", trickle, "2.0"}); err != nil {
 			log.Errorf("error parsing message")
 		} else {
-			r.LPush("peer-send/"+s.PeerID(), message)
+			//r.LPush("peer-send/"+s.PeerID(), message)
 		}
 	}
 
@@ -109,13 +105,10 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 }
 
 func (s *clientJSONRPCBridge) Close() {
-	r := s.Redis()
-	log.Infof("closing peer, sending kill message")
-	r.LPush("peer-send/"+s.PeerID(), "kill")
-	r.LPush("peer-recv/"+s.PeerID(), "kill")
 }
 
 func (s *clientJSONRPCBridge) Listen(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
+	/*
 	r := s.Redis()
 	topic := "peer-recv/" + s.PeerID()
 	log.Infof("watch[%s] started", topic)
@@ -191,4 +184,5 @@ func (s *clientJSONRPCBridge) Listen(ctx context.Context, conn *jsonrpc2.Conn, r
 		}
 
 	}
+	 */
 }
