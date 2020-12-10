@@ -107,7 +107,6 @@ func (w *worker) HandleJoin(signal *pb.SignalRequest) error {
 	mgr := *w.manager
 
 	join := signal.GetJoin()
-	log.Infof("handlejoin %s -> %s", join.Sid, mgr.RoomCount())
 
 	peer := mgr.CreateClient(signal)
 

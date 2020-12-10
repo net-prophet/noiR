@@ -8,8 +8,7 @@ import (
 
 func TestHealth_Checkin(t *testing.T) {
 		mgr := NewTestSetup()
-		worker := mgr.GetWorker()
-		err := mgr.Checkin(worker)
+		err := mgr.Checkin()
 		if err != nil {
 			t.Errorf("error setting up mgr %s", err)
 		}
