@@ -1,10 +1,13 @@
 package noir
 
 import (
+	"encoding/json"
 	"github.com/go-redis/redis"
 	pb "github.com/net-prophet/noir/pkg/proto"
 	log "github.com/pion/ion-log"
+	"github.com/pion/webrtc/v3"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -27,6 +30,7 @@ type worker struct {
 	id      string
 	manager *Manager
 	queue   Queue
+	mu sync.RWMutex
 }
 
 func NewRedisWorkerQueue(client *redis.Client, id string) Queue {
@@ -34,11 +38,11 @@ func NewRedisWorkerQueue(client *redis.Client, id string) Queue {
 }
 
 func NewRedisWorker(id string, manager *Manager, client *redis.Client) Worker {
-	return &worker{id, manager, NewRedisWorkerQueue(client, id)}
+	return &worker{id: id, manager: manager, queue: NewRedisWorkerQueue(client, id)}
 }
 
 func NewWorker(id string, manager *Manager, queue Queue) Worker {
-	return &worker{id, manager, queue}
+	return &worker{id: id, manager: manager, queue: queue}
 }
 
 func (w *worker) HandleForever() {
@@ -46,6 +50,7 @@ func (w *worker) HandleForever() {
 	for {
 		if err := w.HandleNext(0); err != nil {
 			log.Errorf("worker handler error %s", err)
+			time.Sleep(1 * time.Second)
 		}
 	}
 }
@@ -91,14 +96,26 @@ func (w *worker) Handle(request *pb.NoirRequest) error {
 func (w *worker) HandleSignal(request *pb.NoirRequest) error {
 	signal := request.GetSignal()
 	if request.Action == "request.signal.join" {
-		w.HandleJoin(signal)
+		return w.HandleJoin(signal)
 	}
 	return nil
 }
 
 func (w *worker) HandleJoin(signal *pb.SignalRequest) error {
+	w.mu.Lock()
+	defer w.mu.Unlock()
 	mgr := *w.manager
-	peer := *mgr.Join(signal)
-	log.Infof("handlejoin %s -> %s", peer.ID(), peer.SessionID())
+
+	join := signal.GetJoin()
+	log.Infof("handlejoin %s -> %s", join.Sid, mgr.RoomCount())
+
+	peer := mgr.CreateClient(signal)
+
+
+	var offer webrtc.SessionDescription
+	json.Unmarshal(join.Description, &offer)
+
+	peer.Join(join.Sid, offer)
+
 	return nil
 }

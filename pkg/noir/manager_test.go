@@ -59,7 +59,7 @@ func TestHealth_AvailableWorkers(t *testing.T) {
 		}
 
 		if id != "test-worker" {
-			t.Errorf("unexpected worker id %s expected 'test-worker'", id)
+			t.Errorf("unexpected worker clientID %s expected 'test-worker'", id)
 		}
 
 		err = router.Handle(next)
@@ -96,7 +96,7 @@ func TestHealth_Rooms(t *testing.T) {
 		got, _ := mgr.LookupSignalRoomID(request.GetSignal())
 		want := request.GetSignal().GetJoin().Sid
 		if got !=  want {
-			t.Errorf("unexpected room for join: got %s want %s", got, want)
+			t.Errorf("unexpected Room for join: got %s want %s", got, want)
 		}
 
 }

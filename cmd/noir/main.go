@@ -147,10 +147,11 @@ func main() {
 	if err != nil {
 		log.Infof("can't connect to the redis database at %s, got error:\n%v", redisURL, err)
 	}
+	sfu := noir.NewNoirSFU(conf)
 
-	mgr := noir.NewManager(conf, rdb, noir.RandomString(8))
+	mgr := noir.NewManager(&sfu, rdb, noir.RandomString(8))
 
-	go mgr.Start()
+	go mgr.Noir()
 	defer mgr.Cleanup()
 
 	if publicJrpcAddr != "" {

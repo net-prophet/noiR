@@ -1,12 +1,12 @@
 package noir
 
 import (
+	log "github.com/pion/ion-log"
 	"math/rand"
 	"runtime"
 	"sync"
 	"time"
 
-	"github.com/go-redis/redis"
 	sfu "github.com/pion/ion-sfu/pkg/sfu"
 )
 
@@ -19,12 +19,13 @@ type noirSFU struct {
 	router   sfu.RouterConfig
 	mu       sync.RWMutex
 	sessions map[string]*sfu.Session
-	redis *redis.Client
 	nodeID string
+	manager *Manager
 }
 
 type NoirSFU interface {
 	sfu.SessionProvider
+	AttachManager(*Manager)
 }
 
 // NewNoirSFU will create an object that represent the NoirSFU interface
@@ -41,36 +42,44 @@ func NewNoirSFU(c sfu.Config) NoirSFU {
 	return &noirSFU{
 		webrtc: w,
 		sessions: make(map[string]*sfu.Session),
-		nodeID: id }
+		nodeID: id,
+	}
 
 }
 
-// NewSession creates a new session instance
-func (s *noirSFU) newSession(id string) *sfu.Session {
-	session := sfu.NewSession(id)
+func (s *noirSFU) AttachManager(manager *Manager) {
+	s.manager = manager
+}
+
+
+func (s *noirSFU) ensureSession(sessionID string) *sfu.Session {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s, ok := s.sessions[sessionID]; ok {
+		return s
+	}
+
+	log.Infof("creating session %s", sessionID)
+	mgr := *s.manager
+	session := sfu.NewSession(sessionID)
 	session.OnClose(func() {
+		log.Infof("closing session %s", sessionID)
+		mgr.CloseRoom(sessionID)
 		s.mu.Lock()
-		delete(s.sessions, id)
+		delete(s.sessions, sessionID)
 		s.mu.Unlock()
 	})
 
-	s.mu.Lock()
-	s.sessions[id] = session
-	s.mu.Unlock()
+	mgr.OpenRoom(sessionID, session)
+	s.sessions[sessionID] = session
 	return session
 }
 
-// GetSession by id
-func (s *noirSFU) getSession(id string) *sfu.Session {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return s.sessions[id]
-}
-
 func (s *noirSFU) GetSession(sid string) (*sfu.Session, sfu.WebRTCTransportConfig) {
-	session := s.getSession(sid)
-	if session == nil {
-		session = s.newSession(sid)
+	if s.manager == nil {
+		panic("manager not initialized")
 	}
+	session := s.ensureSession(sid)
 	return session, s.webrtc
 }

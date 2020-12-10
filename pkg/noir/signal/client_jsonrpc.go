@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	noir2 "github.com/net-prophet/noir/pkg/noir"
+	noir "github.com/net-prophet/noir/pkg/noir"
 	"github.com/net-prophet/noir/pkg/proto"
 	strings "strings"
 
@@ -14,10 +14,10 @@ import (
 
 type clientJSONRPCBridge struct {
 	pid string
-	manager *noir2.Manager
+	manager *noir.Manager
 }
 
-func NewClientJSONRPCBridge(pid string, manager *noir2.Manager) *clientJSONRPCBridge {
+func NewClientJSONRPCBridge(pid string, manager *noir.Manager) *clientJSONRPCBridge {
 	return &clientJSONRPCBridge{pid: pid, manager: manager}
 }
 
@@ -37,7 +37,7 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 
 	case "join":
 
-		var join noir2.Join
+		var join noir.Join
 		err := json.Unmarshal(*req.Params, &join)
 
 		if err != nil {
@@ -61,12 +61,12 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 		router := (*s.manager).GetRouter()
 		queue := (*router).GetQueue()
 
-		noir2.EnqueueRequest(*queue, command)
+		noir.EnqueueRequest(*queue, command)
 
 		go s.Listen(ctx, conn, req)
 
 	case "offer":
-		var negotiation noir2.Negotiation
+		var negotiation noir.Negotiation
 		err := json.Unmarshal(*req.Params, &negotiation)
 		if err != nil {
 			log.Errorf("connect: error parsing offer: %v", err)
@@ -74,29 +74,29 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 			break
 		}
 
-		json.Marshal(noir2.RPCCall{requestId, "offer", negotiation})
+		json.Marshal(noir.RPCCall{requestId, "offer", negotiation})
 		//r.LPush("peer-send/"+s.PeerID(), message)
 
 	case "answer":
-		var negotiation noir2.Negotiation
+		var negotiation noir.Negotiation
 		err := json.Unmarshal(*req.Params, &negotiation)
 		if err != nil {
 			log.Errorf("connect: error parsing offer: %v", err)
 			replyError(err)
 			break
 		}
-		json.Marshal(noir2.Notify{"answer", negotiation, "2.0"})
+		json.Marshal(noir.Notify{"answer", negotiation, "2.0"})
 		//r.LPush("peer-send/"+s.PeerID(), message)
 
 	case "trickle":
-		var trickle noir2.Trickle
+		var trickle noir.Trickle
 		err := json.Unmarshal(*req.Params, &trickle)
 		if err != nil {
 			log.Errorf("connect: error parsing candidate: %v", err)
 			replyError(err)
 			break
 		}
-		if _, err := json.Marshal(noir2.Notify{"trickle", trickle, "2.0"}); err != nil {
+		if _, err := json.Marshal(noir.Notify{"trickle", trickle, "2.0"}); err != nil {
 			log.Errorf("error parsing message")
 		} else {
 			//r.LPush("peer-send/"+s.PeerID(), message)
@@ -107,6 +107,7 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 }
 
 func (s *clientJSONRPCBridge) Close() {
+	s.manager.CloseClient(s.pid)
 }
 
 func (s *clientJSONRPCBridge) Listen(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {

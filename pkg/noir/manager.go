@@ -16,57 +16,85 @@ import (
 )
 
 const (
-	UpdateFrequency  = 10 * time.Second
-	CheckinFrequency = 5 * time.Second
+	ManagerPingFrequency  = 10 * time.Second
+	PeerPingFrequency = 25 * time.Second
 	WorkersKey       = "noir/list_workers"
 )
 
-type Manager interface {
-	SFU() *NoirSFU
-	FirstAvailableWorkerID(string) (string, error)
-	Checkin() error
-	SetWorker(worker *Worker)
-	SetRouter(router *Router)
-	UpdateAvailableWorkers() error
-	WorkerCount() int
-	WorkerStatus(workerID string) *pb.WorkerStatus
-	GetRemoteWorkerStatus(workerID string) (*pb.WorkerStatus, error)
-	GetRemoteWorkerQueue(workerID string) *Queue
-	GetRouter() *Router
-	GetWorker() *Worker
-	Join(request *pb.SignalRequest) *NoirPeer
-	Start()
-	Cleanup()
-	LookupSignalRoomID(*pb.SignalRequest) (string, error)
-	WorkerForRoom(roomID string) (string, error)
-	GetLocalRoom(roomID string) (*Room, error)
-	GetRemoteRoomStatus(roomID string) (*pb.RoomStatus, error)
-	ClaimRoomNode(roomID string, nodeID string) (bool, error)
-}
-
-type manager struct {
+type Manager struct {
+	id string
 	redis    *redis.Client
 	updated  time.Time
 	router   Router
 	worker   Worker
-	sfu      NoirSFU
+	config   sfu.Config
+	sfu      *NoirSFU
 	statuses map[string]pb.WorkerStatus
-	peers    map[string]NoirPeer
+	clients  map[string]*sfu.Peer
 	rooms    map[string]Room
-	mu 		sync.RWMutex
+	mu       sync.RWMutex
 }
 
-func (m *manager) Join(signal *pb.SignalRequest) *NoirPeer {
+func NewManager(sfu *NoirSFU, client *redis.Client, nodeID string) Manager {
+	routerQueue := NewRedisQueue(client, RouterTopic, RouterMaxAge)
+	workerQueue := NewRedisQueue(client, pb.KeyWorkerTopic(nodeID), RouterMaxAge)
+	workerQueue.Cleanup()
+	manager := NewRedisManager(sfu, client, nodeID)
+	worker := NewWorker(nodeID, &manager, workerQueue)
+	router := NewRouter(routerQueue, &manager)
+	manager.SetWorker(&worker)
+	manager.SetRouter(&router)
+	manager.Checkin()
+	return manager
+}
+
+
+func (m *Manager) OpenRoom(roomID string, session *sfu.Session) *Room {
+	room := NewRoom(roomID, m.ID(), session)
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	join := signal.GetJoin()
-	pid := signal.Id
-	peer := NewNoirPeer(m.sfu, pid, join.Sid)
-	m.peers[pid] = peer
-	return &peer
+	m.rooms[roomID] = room
+	return &room
 }
 
-func (m *manager) WorkerForRoom(roomID string) (string, error) {
+func (m *Manager) CloseRoom(roomID string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.rooms, roomID)
+}
+
+func (m *Manager) CloseClient(clientID string) {
+	client := m.clients[clientID]
+	roomID := m.redis.Get(pb.KeyPeerToRoom(clientID)).Val()
+	room := m.rooms[roomID]
+	session := room.Session()
+	session.RemovePeer(clientID)
+	m.mu.Lock()
+	delete(m.clients, clientID)
+	m.mu.Unlock()
+
+	m.redis.Del(pb.KeyPeerToRoom(clientID))
+
+	client.Close()
+}
+
+func (m *Manager) CreateClient(signal *pb.SignalRequest) *sfu.Peer {
+	join := signal.GetJoin()
+	pid := signal.Id
+	provider := *m.SFU()
+	peer := sfu.NewPeer(provider)
+	m.ClientPing(pid, join.Sid)
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.clients[pid] = peer
+	return peer
+}
+
+func (m *Manager) ClientPing(pid string, sid string) error {
+	return m.redis.Set(pb.KeyPeerToRoom(pid), sid, PeerPingFrequency).Err()
+}
+
+func (m *Manager) WorkerForRoom(roomID string) (string, error) {
 	workerID, err := m.redis.Get(pb.KeyRoomToWorker(roomID)).Result()
 	if err != nil {
 		workerID, err = m.FirstAvailableWorkerID("room.new")
@@ -78,23 +106,38 @@ func (m *manager) WorkerForRoom(roomID string) (string, error) {
 	return workerID, err
 }
 
-func (m *manager) WorkerCount() int {
+func (m *Manager) WorkerCount() int {
 	return int(m.redis.HLen(WorkersKey).Val())
 }
 
-func NewRedisManager(c sfu.Config, client *redis.Client) Manager {
-	sfu := NewNoirSFU(c)
-	return &manager{redis: client, sfu: sfu, statuses: make(map[string]pb.WorkerStatus),
-		peers: make(map[string]NoirPeer),
-		rooms: make(map[string]Room),
+func (m *Manager) RoomCount() int {
+	return len(m.rooms)
+}
+
+func NewRedisManager(provider *NoirSFU, client *redis.Client, nodeID string) Manager {
+	manager := Manager{redis: client,
+		statuses: make(map[string]pb.WorkerStatus),
+		clients:  make(map[string]*sfu.Peer),
+		rooms:    make(map[string]Room),
+		sfu: provider,
+		id: nodeID,
 	}
+	(*provider).AttachManager(&manager)
+	return manager
+
 }
 
-func (m *manager) SFU() *NoirSFU {
-	return &m.sfu
+func (m *Manager) ID() string {
+	return m.id
 }
 
-func (m *manager) Checkin() error {
+func (m *Manager) SFU() *NoirSFU {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.sfu
+}
+
+func (m *Manager) Checkin() error {
 	id := m.worker.ID()
 	now, _ := time.Now().MarshalText()
 	status := &pb.WorkerStatus{Id: id, LastUpdate: string(now)}
@@ -110,19 +153,19 @@ func (m *manager) Checkin() error {
 	return nil
 }
 
-func (m *manager) SetWorker(w *Worker) {
+func (m *Manager) SetWorker(w *Worker) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.worker = *w
 }
 
-func (m *manager) SetRouter(r *Router) {
+func (m *Manager) SetRouter(r *Router) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.router = *r
 }
 
-func (m *manager) RandomWorkerId() (string, error) {
+func (m *Manager) RandomWorkerId() (string, error) {
 	ids, err := m.redis.HKeys(WorkersKey).Result()
 	if err != nil || len(ids) == 0 {
 		return "", errors.New("no workers available")
@@ -130,7 +173,7 @@ func (m *manager) RandomWorkerId() (string, error) {
 	return ids[rand.Intn(len(ids))], nil
 }
 
-func (m *manager) GetRemoteWorkerStatus(workerID string) (*pb.WorkerStatus, error) {
+func (m *Manager) GetRemoteWorkerStatus(workerID string) (*pb.WorkerStatus, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	loaded, err := m.LoadStatus(pb.KeyWorkerStatus(workerID))
@@ -142,24 +185,24 @@ func (m *manager) GetRemoteWorkerStatus(workerID string) (*pb.WorkerStatus, erro
 	return status, nil
 }
 
-func (m *manager) GetRemoteWorkerQueue(id string) *Queue {
+func (m *Manager) GetRemoteWorkerQueue(id string) *Queue {
 	queue := NewRedisWorkerQueue(m.redis, id)
 	return &queue
 }
 
-func (m *manager) GetRouter() *Router {
+func (m *Manager) GetRouter() *Router {
 	return &(m.router)
 }
 
-func (m *manager) GetWorker() *Worker {
+func (m *Manager) GetWorker() *Worker {
 	return &(m.worker)
 }
 
-func (m *manager) FirstAvailableWorkerID(action string) (string, error) {
+func (m *Manager) FirstAvailableWorkerID(action string) (string, error) {
 	return m.RandomWorkerId()
 }
 
-func (m *manager) UpdateAvailableWorkers() error {
+func (m *Manager) UpdateAvailableWorkers() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	ids, err := m.redis.HKeys(WorkersKey).Result()
@@ -186,7 +229,7 @@ func (m *manager) UpdateAvailableWorkers() error {
 		}
 		var last time.Time
 		last.UnmarshalText([]byte(decode.LastUpdate))
-		if age := time.Now().Sub(last) ; age > 2 * UpdateFrequency && decode.Id != m.worker.ID() {
+		if age := time.Now().Sub(last); age > 2*ManagerPingFrequency && decode.Id != m.worker.ID() {
 			log.Warnf("haven't heard from %s; marking it offline", decode.Id)
 			m.MarkOffline(decode.Id)
 			continue
@@ -199,44 +242,51 @@ func (m *manager) UpdateAvailableWorkers() error {
 	return nil
 }
 
-func (m *manager) Cleanup() {
-	m.redis.HDel(WorkersKey, m.worker.ID())
+func (m *Manager) Cleanup() {
+	m.MarkOffline(m.worker.ID())
+	workQueue := *m.worker.GetQueue()
+	workQueue.Cleanup()
 	m.redis.Close()
 }
 
-func (m *manager) LookupSignalRoomID(request *pb.SignalRequest) (string, error) {
-	switch request.Payload.(type) {
+func (m *Manager) LookupSignalRoomID(signal *pb.SignalRequest) (string, error) {
+	switch signal.Payload.(type) {
 	case *pb.SignalRequest_Join:
-		return request.GetJoin().Sid, nil
+		return signal.GetJoin().Sid, nil
 	}
-	return "", errors.New("unable to find room for signal")
+	return m.LookupPeerRoomID(signal.Id)
 }
 
-func (m *manager) GetLocalRoom(roomID string) (*Room, error) {
+func (m *Manager) LookupPeerRoomID(peerID string) (string, error) {
+	return m.redis.Get(pb.KeyPeerToRoom(peerID)).Result()
+}
+
+func (m *Manager) GetLocalRoom(roomID string) (*Room, error) {
 	room := m.rooms[roomID]
 	return &room, nil
 }
 
-func (m *manager) GetRemoteRoomExists(roomID string) (bool, error) {
+func (m *Manager) GetRemoteRoomExists(roomID string) (bool, error) {
 	val, err := m.redis.Exists(pb.KeyRoomToWorker(roomID)).Result()
 	return val == 0, err
 }
 
-func (m *manager) GetRemoteRoomStatus(roomID string) (*pb.RoomStatus, error) {
+func (m *Manager) GetRemoteRoomStatus(roomID string) (*pb.RoomStatus, error) {
 	loaded, err := m.LoadStatus(pb.KeyRoomStatus(roomID))
 	if err != nil {
 		return nil, err
 	}
-	m.rooms[roomID].UpdateStatus(loaded.GetRoom())
-	return m.rooms[roomID].LatestStatus(), nil
+	room := m.rooms[roomID]
+	room.UpdateStatus(loaded.GetRoom())
+	return room.LatestStatus(), nil
 }
 
-func (m *manager) ClaimRoomNode(roomID string, nodeID string) (bool, error) {
+func (m *Manager) ClaimRoomNode(roomID string, nodeID string) (bool, error) {
 	return m.redis.SetNX(pb.KeyRoomToWorker(roomID), nodeID, 10*time.Second).Result()
 }
 
 // Only on RedisManager
-func (m *manager) SaveStatus(key string, status *pb.NoirStatus, expiry time.Duration) error {
+func (m *Manager) SaveStatus(key string, status *pb.NoirStatus, expiry time.Duration) error {
 	data, err := proto.Marshal(status)
 
 	if err != nil {
@@ -254,7 +304,7 @@ func (m *manager) SaveStatus(key string, status *pb.NoirStatus, expiry time.Dura
 	return nil
 }
 
-func (m *manager) LoadStatus(key string) (*pb.NoirStatus, error) {
+func (m *Manager) LoadStatus(key string) (*pb.NoirStatus, error) {
 	var load *pb.NoirStatus
 	data, err := m.redis.Get(key).Result()
 	if err != nil {
@@ -272,25 +322,23 @@ func (m *manager) LoadStatus(key string) (*pb.NoirStatus, error) {
 // Local Memory Manager
 
 func NewTestManager(driver string, config sfu.Config) Manager {
-	if driver != "" {
-		rdb := redis.NewClient(&redis.Options{
-			Addr:     os.Getenv("TEST_REDIS"),
-			Password: "",
-			DB:       0,
-		})
-		return NewRedisManager(config, rdb)
-	}
-	return nil
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     driver,
+		Password: "",
+		DB:       0,
+	})
+	sfu := NewNoirSFU(config)
+	return NewRedisManager(&sfu, rdb, RandomString(4))
 }
 
-func (m *manager) WorkerStatus(id string) *pb.WorkerStatus {
+func (m *Manager) WorkerStatus(id string) *pb.WorkerStatus {
 	status := m.statuses[id]
 	return &status
 }
 
-func (m *manager) Start() {
+func (m *Manager) Noir() {
 	if m.worker == nil || m.router == nil {
-		panic("manager not initialized")
+		panic("Manager not initialized")
 	}
 	info := time.NewTicker(5 * time.Second)
 	update := time.NewTicker(20 * time.Second)
@@ -304,21 +352,24 @@ func (m *manager) Start() {
 
 	for {
 		select {
-			case <- checkin.C:
-				m.Checkin()
-			case <- update.C:
-				m.UpdateAvailableWorkers()
-			case <- info.C:
-				log.Infof("%s: noirs=%d users=%d rooms=%d", m.worker.ID(), len(m.statuses), len(m.peers), len(m.rooms))
-			case <- quit:
-				info.Stop()
-				update.Stop()
-				m.MarkOffline(m.worker.ID())
-				return
+		case <-checkin.C:
+			m.Checkin()
+		case <-update.C:
+			m.UpdateAvailableWorkers()
+		case <-info.C:
+			log.Infof("%s: noirs=%d users=%d rooms=%d", m.worker.ID(), len(m.statuses), len(m.clients), m.RoomCount())
+		case <-quit:
+			log.Infof("quit requested, cleaning up...")
+			info.Stop()
+			update.Stop()
+			m.Cleanup()
+			log.Infof("cleaned up ok!")
+			os.Exit(1)
+			return
 		}
 	}
 }
 
-func (m *manager) MarkOffline(workerID string) {
+func (m *Manager) MarkOffline(workerID string) {
 	m.redis.HDel(WorkersKey, workerID)
 }

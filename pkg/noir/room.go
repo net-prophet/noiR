@@ -2,28 +2,29 @@ package noir
 
 import (
 	pb "github.com/net-prophet/noir/pkg/proto"
+	"github.com/pion/ion-sfu/pkg/sfu"
 	"time"
 )
 
-type Room interface {
-	LatestStatus() *pb.RoomStatus
-	UpdateStatus(status *pb.RoomStatus)
-}
-
-type room struct {
+type Room struct {
 	id string
 	lastUpdated time.Time
 	status pb.RoomStatus
+	session *sfu.Session
 }
 
-func NewRoom(roomID string, workerID string) Room {
+func NewRoom(roomID string, workerID string, session *sfu.Session) Room {
 	status := pb.RoomStatus{LastUpdate: time.Now().String(), WorkerID: workerID}
-	return &room{id: roomID, lastUpdated: time.Now(), status: status}
+	return Room{id: roomID, lastUpdated: time.Now(), status: status, session: session}
 }
 
-func (r *room) LatestStatus() *pb.RoomStatus {
+func (r *Room) LatestStatus() *pb.RoomStatus {
 	return &r.status
 }
-func (r *room) UpdateStatus(remote *pb.RoomStatus) {
+func (r *Room) UpdateStatus(remote *pb.RoomStatus) {
 	r.status = *remote
+}
+
+func (r *Room) Session() *sfu.Session {
+	return r.session
 }

@@ -123,7 +123,7 @@ func TestRouterRouteAction(t *testing.T) {
 	}
 
 	if id != "test-worker" {
-		t.Errorf("unexpected worker id %s expected 'test-worker'", id)
+		t.Errorf("unexpected worker clientID %s expected 'test-worker'", id)
 		return
 	}
 

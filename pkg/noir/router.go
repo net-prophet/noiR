@@ -18,15 +18,15 @@ type Router interface {
 
 type router struct {
 	queue Queue
-	mgr   Manager
+	mgr   *Manager
 }
 
-func NewRedisRouter(client *redis.Client, mgr Manager) Router {
+func NewRedisRouter(client *redis.Client, mgr *Manager) Router {
 	queue := NewRedisQueue(client, RouterTopic, RouterMaxAge)
 	return &router{queue, mgr}
 }
 
-func NewRouter(queue Queue, mgr Manager) Router {
+func NewRouter(queue Queue, mgr *Manager) Router {
 	return &router{queue, mgr}
 }
 func (r *router) HandleForever() {
@@ -66,12 +66,12 @@ func (r *router) Handle(request *pb.NoirRequest) error {
 	var routeErr error
 	target := ""
 	if strings.HasPrefix(request.Action[:15],"request.signal.") {
-		// Signal messages get routed to the worker handling the room
+		// Signal messages get routed to the worker handling the Room
 		room, _ := r.mgr.LookupSignalRoomID(request.GetSignal())
 
 		target, routeErr = r.mgr.WorkerForRoom(room)
 		if target == "" && routeErr == nil {
-			// Assign the first peer queue a room to a new worker based on capacity
+			// Assign the first peer queue a Room to a new worker based on capacity
 			target, routeErr = r.mgr.FirstAvailableWorkerID(request.Action)
 			r.mgr.ClaimRoomNode(room, target)
 		}

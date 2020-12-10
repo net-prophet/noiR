@@ -21,14 +21,14 @@ type Trickle struct {
 }
 
 type Play struct {
-	Sid      string `json:"sid"`
+	Sid      string `json:"roomID"`
 	Pid      string `json:"pid"`
 	Filename string `json:"filename"`
 	Repeat   bool   `json:"repeat"`
 }
 
 type RPCCall struct {
-	ID     string      `json:"id"`
+	ID     string      `json:"clientID"`
 	Method string      `json:"method"`
 	Params interface{} `json:"params"`
 }
@@ -44,7 +44,7 @@ type RPCPlay struct {
 }
 
 type ResultOrNotify struct {
-	ID         string      `json:"id"`
+	ID         string      `json:"clientID"`
 	ResultType string      `json:"type"`
 	Method     string      `json:"method"`
 	Params     interface{} `json:"params"`
@@ -52,7 +52,7 @@ type ResultOrNotify struct {
 }
 
 type Result struct {
-	ID      string      `json:"id"`
+	ID      string      `json:"clientID"`
 	Result  interface{} `json:"result"`
 	JSONRPC string      `json:"jsonrpc"`
 }

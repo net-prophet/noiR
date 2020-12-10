@@ -121,19 +121,6 @@ func NewTestQueue(topic string) Queue {
 	return NewRedisQueue(rdb, topic, 60*time.Second)
 }
 
-func NewManager(config sfu.Config, client *redis.Client, nodeID string) Manager {
-	routerQueue := NewRedisQueue(client, RouterTopic, RouterMaxAge)
-	workerQueue := NewRedisQueue(client, pb.KeyWorkerTopic(nodeID), RouterMaxAge)
-	workerQueue.Cleanup()
-	manager := NewRedisManager(config, client)
-	worker := NewWorker(nodeID, &manager, workerQueue)
-	router := NewRouter(routerQueue, manager)
-	manager.SetWorker(&worker)
-	manager.SetRouter(&router)
-	manager.Checkin()
-	return manager
-}
-
 func NewTestSetup() Manager {
 	driver := os.Getenv("TEST_REDIS")
 	rdb := redis.NewClient(&redis.Options{
@@ -142,7 +129,8 @@ func NewTestSetup() Manager {
 		DB:       0,
 	})
 	config := sfu.Config{}
-	return NewManager(config, rdb, "test-worker")
+	sfu := NewNoirSFU(config)
+	return NewManager(&sfu, rdb, "test-worker")
 }
 
 // listQueue is a queue for the tests!
