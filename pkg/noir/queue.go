@@ -1,7 +1,7 @@
 package noir
 
 import (
-"github.com/go-redis/redis"
+	"github.com/go-redis/redis"
 	"time"
 )
 
@@ -11,6 +11,7 @@ type Queue interface {
 	BlockUntilNext(timeout time.Duration) ([]byte, error)
 	Count() (int64, error)
 	Cleanup() error
+	Topic() string
 }
 
 type redisQueue struct {
@@ -33,6 +34,10 @@ func (q *redisQueue) Add(value []byte) error {
 
 func (q *redisQueue) Cleanup() error {
 	return q.client.Del(q.topic).Err()
+}
+
+func (q *redisQueue) Topic() string {
+	return q.topic
 }
 
 func (q *redisQueue) Next() ([]byte, error) {

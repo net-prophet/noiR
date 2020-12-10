@@ -2,7 +2,7 @@ package signal
 
 import (
 	"github.com/gorilla/websocket"
-	"github.com/net-prophet/noir/pkg"
+	"github.com/net-prophet/noir/pkg/noir"
 	log "github.com/pion/ion-log"
 	"github.com/sourcegraph/jsonrpc2"
 	websocketjsonrpc2 "github.com/sourcegraph/jsonrpc2/websocket"
@@ -12,7 +12,7 @@ import (
 // server.go contains public API handlers
 
 
-func PublicJSONRPC(n *noir.NoirSFU, publicJrpcAddr string, key string, cert string) {
+func PublicJSONRPC(mgr *noir.Manager, publicJrpcAddr string, key string, cert string) {
 	upgrader := websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
 			return true
@@ -31,8 +31,7 @@ func PublicJSONRPC(n *noir.NoirSFU, publicJrpcAddr string, key string, cert stri
 
 		pid := noir.RandomString(32)
 
-		p := NewClientJSONRPCBridge(
-			noir.NewNoirPeer(*n, pid, ""))
+		p := NewClientJSONRPCBridge(pid, mgr)
 
 		defer p.Close()
 

@@ -2,16 +2,16 @@ package signal
 
 import (
 	"context"
-	noir "github.com/net-prophet/noir/pkg"
+	noir2 "github.com/net-prophet/noir/pkg/noir"
 	log "github.com/pion/ion-log"
 	"github.com/sourcegraph/jsonrpc2"
 )
 
 type adminJSONRPC struct {
-	sfu *noir.NoirSFU
+	sfu *noir2.NoirSFU
 }
 
-func NewAdminJSONRPC(s *noir.NoirSFU) *adminJSONRPC {
+func NewAdminJSONRPC(s *noir2.NoirSFU) *adminJSONRPC {
 	return &adminJSONRPC{s}
 }
 

@@ -5,15 +5,19 @@ import (
 	"github.com/go-redis/redis"
 	pb "github.com/net-prophet/noir/pkg/proto"
 	log "github.com/pion/ion-log"
+	"github.com/pion/ion-sfu/pkg/sfu"
 	proto "google.golang.org/protobuf/proto"
-	"os"
-	"time"
 	"math/rand"
+	"os"
+	"sync/atomic"
+	"time"
 )
 
 const (
 	charset = "abcdefghijklmnopqrstuvwxyz" +
 		"ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	publisher  = 0
+	subscriber = 1
 )
 
 var (
@@ -31,6 +35,23 @@ func StringWithCharset(length int, charset string) string {
 
 func RandomString(length int) string {
 	return StringWithCharset(length, charset)
+}
+
+type atomicBool struct {
+	val int32
+}
+
+func (b *atomicBool) set(value bool) { // nolint: unparam
+	var i int32
+	if value {
+		i = 1
+	}
+
+	atomic.StoreInt32(&(b.val), i)
+}
+
+func (b *atomicBool) get() bool {
+	return atomic.LoadInt32(&(b.val)) != 0
 }
 
 // ROUTER UTILS
@@ -90,34 +111,52 @@ func EnqueueRequest(queue Queue, value *pb.NoirRequest) error {
 }
 
 // TEST UTILS
-func MakeTestDrivers() []string {
-	drivers := []string{"locmem",}
-	if os.Getenv("TEST_REDIS") != "" {
-		drivers = append(drivers, os.Getenv("TEST_REDIS"))
-	}
-	return drivers
+func NewTestQueue(topic string) Queue {
+	redisUrl := os.Getenv("TEST_REDIS")
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     redisUrl,
+		Password: "",
+		DB:       0,
+	})
+	return NewRedisQueue(rdb, topic, 60*time.Second)
 }
 
-func MakeTestQueue(redisUrl string, topic string) Queue {
-	if redisUrl != "" && redisUrl != "locmem" {
-		rdb := redis.NewClient(&redis.Options{
-			Addr:     os.Getenv("TEST_REDIS"),
-			Password: "",
-			DB:       0,
-		})
-		return NewRedisQueue(rdb, topic, 60*time.Second)
-	} else {
-		return NewListQueue()
-	}
+func NewManager(config sfu.Config, client *redis.Client, nodeID string) Manager {
+	routerQueue := NewRedisQueue(client, RouterTopic, RouterMaxAge)
+	workerQueue := NewRedisQueue(client, pb.KeyWorkerTopic(nodeID), RouterMaxAge)
+	workerQueue.Cleanup()
+	manager := NewRedisManager(config, client)
+	worker := NewWorker(nodeID, &manager, workerQueue)
+	router := NewRouter(routerQueue, manager)
+	manager.SetWorker(&worker)
+	manager.SetRouter(&router)
+	manager.Checkin()
+	return manager
+}
+
+func NewTestSetup() Manager {
+	driver := os.Getenv("TEST_REDIS")
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     driver,
+		Password: "",
+		DB:       0,
+	})
+	config := sfu.Config{}
+	return NewManager(config, rdb, "test-worker")
 }
 
 // listQueue is a queue for the tests!
 type listQueue struct {
 	messages [][]byte
+	topic string
 }
 
-func NewListQueue() Queue {
-	return &listQueue{}
+func (q *listQueue) Topic() string {
+	return q.topic
+}
+
+func NewListQueue(topic string) Queue {
+	return &listQueue{messages: [][]byte{}, topic: topic}
 }
 
 func (q *listQueue) Add(value []byte) error {

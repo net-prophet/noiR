@@ -5,17 +5,16 @@ import (
 	"context"
 	"flag"
 	"fmt"
-	"github.com/net-prophet/noir/signal"
+	noir "github.com/net-prophet/noir/pkg/noir"
+	"github.com/net-prophet/noir/pkg/noir/signal"
 	"net/http"
 	"os"
 
 	"github.com/go-redis/redis"
-	noir "github.com/net-prophet/noir/pkg"
-
 	"github.com/spf13/viper"
 
 	log "github.com/pion/ion-log"
-	sfu "github.com/pion/ion-sfu/pkg"
+	sfu "github.com/pion/ion-sfu/pkg/sfu"
 	"github.com/pion/webrtc/v3"
 )
 
@@ -26,7 +25,6 @@ var (
 	redisURL       string
 	demoAddr       string
 	grpcAddr       string
-	nodeID         string
 	cert           string
 	key            string
 	publicJrpcAddr string
@@ -42,7 +40,6 @@ func showHelp() {
 	fmt.Printf("Usage:%s {params}\n", os.Args[0])
 	fmt.Println("      -c {config file}")
 	fmt.Println("      -u {redis url}")
-	fmt.Println("      -n {node id}")
 	fmt.Println("      -d {demo http addr}")
 	fmt.Println("      -j {public jsonrpc addr}")
 	fmt.Println("      -a {admin jsonrpc addr}")
@@ -113,7 +110,6 @@ func parse() bool {
 	flag.StringVar(&grpcAddr, "g", ":50051", "grpc addr for admin")
 	flag.StringVar(&cert, "cert", "", "public jsonrpc https cert file")
 	flag.StringVar(&key, "key", "", "public jsonrpc https key file")
-	flag.StringVar(&nodeID, "n", "", "node ID to subscribe to")
 	help := flag.Bool("h", false, "help info")
 	flag.Parse()
 	if !load() {
@@ -145,7 +141,6 @@ func main() {
 		DB:       0,
 	})
 
-	defer rdb.Close()
 	// Test the connection
 	_, err := rdb.Ping().Result()
 
@@ -153,12 +148,13 @@ func main() {
 		log.Infof("can't connect to the redis database at %s, got error:\n%v", redisURL, err)
 	}
 
-	ion := sfu.NewSFU(conf)
+	mgr := noir.NewManager(conf, rdb, noir.RandomString(8))
 
-	SFU = noir.NewNoirSFU(*ion, rdb, nodeID)
+	go mgr.Start()
+	defer mgr.Cleanup()
 
 	if publicJrpcAddr != "" {
-		go signal.PublicJSONRPC(&SFU, publicJrpcAddr, key, cert)
+		go signal.PublicJSONRPC(&mgr, publicJrpcAddr, key, cert)
 	}
 	if adminJrpcAddr != "" {
 		go signal.AdminJSONRPC(&SFU, adminJrpcAddr)
@@ -167,7 +163,6 @@ func main() {
 		go signal.AdminGRPC(&SFU, grpcAddr)
 	}
 
-	go SFU.Listen()
 
 	if demoAddr != "" {
 

@@ -6,28 +6,25 @@ import (
 	"testing"
 )
 
-func TestHealthCheckin(t *testing.T) {
-	for _, driver := range MakeTestDrivers() {
-
-		health, worker, _, _ := NewTestSetup(driver)
-		err := health.Checkin(&worker)
+func TestHealth_Checkin(t *testing.T) {
+		mgr := NewTestSetup()
+		worker := mgr.GetWorker()
+		err := mgr.Checkin(worker)
 		if err != nil {
-			t.Errorf("error setting up health %s", err)
+			t.Errorf("error setting up mgr %s", err)
 		}
 
-		health.UpdateAvailableWorkers()
+		mgr.UpdateAvailableWorkers()
 
-		count := health.WorkerCount()
+		count := mgr.WorkerCount()
 		if count != 1 {
 			t.Errorf("expected 1 worker, got %d", count)
 		}
-	}
 }
 
-func TestHealthAvailableWorkers(t *testing.T) {
-	for _, driver := range MakeTestDrivers() {
-
-		health, _, router, _ := NewTestSetup(driver)
+func TestHealth_AvailableWorkers(t *testing.T) {
+		mgr := NewTestSetup()
+		router := *mgr.GetRouter()
 
 		request := &pb.NoirRequest{
 			Command: &pb.NoirRequest_Signal{
@@ -55,7 +52,7 @@ func TestHealthAvailableWorkers(t *testing.T) {
 			t.Errorf("error parsing request %s", err)
 		}
 
-		id, err := health.FirstAvailableWorkerID(next.Action)
+		id, err := mgr.FirstAvailableWorkerID(next.Action)
 
 		if err != nil {
 			t.Errorf("no target for action %s %s", next.Action, err)
@@ -70,12 +67,36 @@ func TestHealthAvailableWorkers(t *testing.T) {
 		if err != nil {
 			t.Errorf("error routing request %s", err)
 		}
-		worker_queue := *health.GetWorkerQueue("test-worker")
-		got, _ := worker_queue.Next()
+		workerQueue := *mgr.GetRemoteWorkerQueue("test-worker")
+		got, _ := workerQueue.Next()
 		want, _ := MarshalRequest(request)
 
 		if string(got) != string(want) {
 			t.Errorf("worker got %s queue sent %s", got, want)
 		}
-	}
+}
+
+func TestHealth_Rooms(t *testing.T) {
+		mgr := NewTestSetup()
+
+		request := &pb.NoirRequest{
+			Command: &pb.NoirRequest_Signal{
+				Signal: &pb.SignalRequest{
+					Id: "123",
+					Payload: &pb.SignalRequest_Join{
+						Join: &pb.JoinRequest{
+							Sid:         "test",
+							Description: []byte{},
+						},
+					},
+				},
+			},
+		}
+
+		got, _ := mgr.LookupSignalRoomID(request.GetSignal())
+		want := request.GetSignal().GetJoin().Sid
+		if got !=  want {
+			t.Errorf("unexpected room for join: got %s want %s", got, want)
+		}
+
 }

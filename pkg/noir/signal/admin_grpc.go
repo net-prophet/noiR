@@ -1,7 +1,7 @@
 package signal
 
 import (
-	noir "github.com/net-prophet/noir/pkg"
+	noir2 "github.com/net-prophet/noir/pkg/noir"
 	"io"
 
 	log "github.com/pion/ion-log"
@@ -12,7 +12,7 @@ import (
 	pb "github.com/net-prophet/noir/pkg/proto"
 )
 
-func NewGRPCServer(sfu *noir.NoirSFU) *grpc.Server {
+func NewGRPCServer(sfu *noir2.NoirSFU) *grpc.Server {
 	s := grpc.NewServer()
 	pb.RegisterNoirSFUServer(s, &SFUServer{SFU: sfu})
 	return s
@@ -20,7 +20,7 @@ func NewGRPCServer(sfu *noir.NoirSFU) *grpc.Server {
 
 type SFUServer struct {
 	pb.UnimplementedNoirSFUServer
-	SFU *noir.NoirSFU
+	SFU *noir2.NoirSFU
 }
 
 // TODO: implement admin grpc

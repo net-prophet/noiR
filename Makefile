@@ -2,6 +2,7 @@ GO_LDFLAGS = -ldflags "-s -w"
 GO_VERSION = 1.14
 GO_TESTPKGS:=$(shell go list ./... | grep -v cmd | grep -v examples)
 CI_REGISTRY_IMAGE = docker.netprophet.tech/netp/noir
+TEST_REDIS = :6379
 
 all: docker demo
 
@@ -10,7 +11,14 @@ go_init:
 	go generate ./...
 
 protos:
-	docker build -t protoc-builder ./pkg/proto && docker run -v $(CURDIR):/workspace protoc-builder protoc --go_out=. --go_opt=paths=source_relative --go-grpc_out=. --go-grpc_opt=paths=source_relative pkg/proto/noir.proto pkg/proto/health.proto
+	docker build -t protoc-builder ./pkg/proto && \
+	docker run -v $(CURDIR):/workspace protoc-builder protoc \
+		--go_out=. \
+		--go_opt=paths=source_relative \
+		--go-grpc_out=. \
+		--go-grpc_opt=paths=source_relative \
+		pkg/proto/noir.proto \
+		pkg/proto/status.proto
 
 clean:
 	rm -rf bin
@@ -34,17 +42,14 @@ tag:
 							 && docker push ${CI_REGISTRY_IMAGE}:latest ) \
 		  || echo "usage: make tag TAG=..."
 
-demo_redis:
+test_redis:
 	docker run -d --rm -p 6379:6379 --name noir-redis sameersbn/redis
 
 demo:
 	echo "Starting local demonstration at http://localhost:7070" && docker run --net host ghcr.io/net-prophet/noir:latest -d :7070 -j :7000
 
-test_with_redis:
-	TEST_REDIS=:6379 make test
-
 test: go_init
-	go test \
+	TEST_REDIS=${TEST_REDIS} go test \
 		-timeout 120s \
 		-coverprofile=cover.out -covermode=atomic \
 		-v -race ${GO_TESTPKGS}
