@@ -4,17 +4,25 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/golang/protobuf/proto"
 	noir "github.com/net-prophet/noir/pkg/noir"
-	"github.com/net-prophet/noir/pkg/proto"
-	strings "strings"
-
+	pb "github.com/net-prophet/noir/pkg/proto"
 	log "github.com/pion/ion-log"
+	"github.com/pion/webrtc/v3"
 	"github.com/sourcegraph/jsonrpc2"
+	strings "strings"
+	"time"
 )
 
 type clientJSONRPCBridge struct {
-	pid string
+	pid     string
 	manager *noir.Manager
+}
+
+// Trickle message sent when renegotiating the peer connection
+type Trickle struct {
+	Target    int                     `json:"target"`
+	Candidate webrtc.ICECandidateInit `json:"candidate"`
 }
 
 func NewClientJSONRPCBridge(pid string, manager *noir.Manager) *clientJSONRPCBridge {
@@ -33,11 +41,18 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 
 	requestId := strings.Replace(req.ID.String(), "\"", "", -1)
 
+	router := (*s.manager).GetRouter()
+	routerQueue := (*router).GetQueue()
+	
+	toPeerQueue := s.manager.GetQueue(pb.KeyTopicToPeer(s.pid), noir.PeerPingFrequency)
+
+	log.Debugf("from jsonrpc %s %s", s.pid, req.Method)
+
 	switch req.Method {
 
 	case "join":
 
-		var join noir.Join
+		var join pb.Join
 		err := json.Unmarshal(*req.Params, &join)
 
 		if err != nil {
@@ -46,64 +61,102 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 			break
 		}
 
-		command := &proto.NoirRequest{
-			Command: &proto.NoirRequest_Signal{
-				Signal: &proto.SignalRequest{
+		command := &pb.NoirRequest{
+			Command: &pb.NoirRequest_Signal{
+				Signal: &pb.SignalRequest{
 					// SignalRequest.id should be called pid but we are ion-sfu compatible
-					Id: s.pid,
-					Payload: &proto.SignalRequest_Join{&proto.JoinRequest{
+					Id:        s.pid,
+					RequestId: requestId,
+					Payload: &pb.SignalRequest_Join{&pb.JoinRequest{
 						Sid:         join.Sid,
 						Description: []byte(join.Offer.SDP),
 					},
 					},
 				},
 			}}
-		router := (*s.manager).GetRouter()
-		queue := (*router).GetQueue()
-
-		noir.EnqueueRequest(*queue, command)
+		
+		noir.EnqueueRequest(*routerQueue, command)
 
 		go s.Listen(ctx, conn, req)
 
 	case "offer":
-		var negotiation noir.Negotiation
+		var negotiation pb.Negotiation
 		err := json.Unmarshal(*req.Params, &negotiation)
+		marshaled, _ := json.Marshal(negotiation)
 		if err != nil {
 			log.Errorf("connect: error parsing offer: %v", err)
 			replyError(err)
 			break
 		}
 
-		json.Marshal(noir.RPCCall{requestId, "offer", negotiation})
-		//r.LPush("peer-send/"+s.PeerID(), message)
+		command := &pb.NoirRequest{
+			Command: &pb.NoirRequest_Signal{
+				Signal: &pb.SignalRequest{
+					// SignalRequest.id should be called pid but we are ion-sfu compatible
+					Id:        s.pid,
+					RequestId: requestId,
+					Payload: &pb.SignalRequest_Description{
+						Description: marshaled,
+					},
+				},
+			}}
+
+		noir.EnqueueRequest(toPeerQueue, command)
 
 	case "answer":
-		var negotiation noir.Negotiation
+		var negotiation pb.Negotiation
 		err := json.Unmarshal(*req.Params, &negotiation)
+		marshaled, _ := json.Marshal(negotiation)
 		if err != nil {
 			log.Errorf("connect: error parsing offer: %v", err)
 			replyError(err)
 			break
 		}
-		json.Marshal(noir.Notify{"answer", negotiation, "2.0"})
-		//r.LPush("peer-send/"+s.PeerID(), message)
+
+		command := &pb.NoirRequest{
+			Command: &pb.NoirRequest_Signal{
+				Signal: &pb.SignalRequest{
+					// SignalRequest.id should be called pid but we are ion-sfu compatible
+					Id:        s.pid,
+					RequestId: requestId,
+					Payload: &pb.SignalRequest_Description{
+						Description: marshaled,
+					},
+				},
+			}}
+
+		noir.EnqueueRequest(toPeerQueue, command)
 
 	case "trickle":
-		var trickle noir.Trickle
+		var trickle Trickle
 		err := json.Unmarshal(*req.Params, &trickle)
 		if err != nil {
 			log.Errorf("connect: error parsing candidate: %v", err)
 			replyError(err)
 			break
 		}
-		if _, err := json.Marshal(noir.Notify{"trickle", trickle, "2.0"}); err != nil {
-			log.Errorf("error parsing message")
+		var target pb.Trickle_Target
+		if trickle.Target == 1 {
+			target = pb.Trickle_PUBLISHER
 		} else {
-			//r.LPush("peer-send/"+s.PeerID(), message)
+			target = pb.Trickle_SUBSCRIBER
 		}
-	}
+		marshaled, _ := json.Marshal(trickle.Candidate)
 
-	//r.Expire("peer-send/"+s.PeerID(), 10*time.Second)
+		command := &pb.NoirRequest{
+			Command: &pb.NoirRequest_Signal{
+				Signal: &pb.SignalRequest{
+					// SignalRequest.id should be called pid but we are ion-sfu compatible
+					Id:        s.pid,
+					RequestId: requestId,
+					Payload: &pb.SignalRequest_Trickle{Trickle: &pb.Trickle{
+						Target: target,
+						Init:   string(marshaled),
+					}},
+				},
+			}}
+		noir.EnqueueRequest(toPeerQueue, command)
+	}
 }
 
 func (s *clientJSONRPCBridge) Close() {
@@ -111,81 +164,69 @@ func (s *clientJSONRPCBridge) Close() {
 }
 
 func (s *clientJSONRPCBridge) Listen(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
-	/*
-	r := s.Redis()
-	topic := "peer-recv/" + s.PeerID()
-	log.Infof("watch[%s] started", topic)
+	//send := s.manager.GetQueue(pb.KeyTopicToPeer(s.pid), noir.PeerPingFrequency)
+	recv := s.manager.GetQueue(pb.KeyTopicFromPeer(s.pid), noir.PeerPingFrequency)
+
+	log.Infof("peer bridge %s", s.pid)
 
 	for {
 
-		message, err := r.BRPop(0, topic).Result()
+		message, err := recv.BlockUntilNext(0)
 
 		if err != nil {
-			log.Errorf("unrecognized %s", message)
-			continue
-		}
-		if message[1] == "kill" {
-			s.Cleanup()
-			return
-		}
-
-		var rpc noir.ResultOrNotify
-
-		if err := json.Unmarshal([]byte(message[1]), &rpc); err != nil {
-			log.Errorf("failed to unmarshal rpc %s", message[1])
+			log.Errorf("message err: %s", err)
+			time.Sleep(time.Second)
 			continue
 		}
 
-		log.Infof("RPC: %s:%s/%s", rpc.ID, rpc.ResultType, rpc.Method)
+		var reply pb.NoirReply
 
-		if rpc.ID != "" {
-			conn.Reply(ctx, jsonrpc2.ID{Num: 0, Str: rpc.ID, IsString: true}, rpc.Result)
-			continue
-		}
-
-		packed, err := json.Marshal(rpc.Params)
+		err = proto.Unmarshal(message, &reply)
 		if err != nil {
-			log.Errorf("failed to marshal params %s", rpc.Params)
+			log.Errorf("unmarshal err: %s", err)
 			continue
 		}
 
-		if rpc.ResultType == "answer" {
-			var answer webrtc.SessionDescription
-			if err := json.Unmarshal([]byte(message[1]), &answer); err != nil {
-				log.Errorf("failed to unmarshal answer %s %s", err, message[1])
-				continue
+		switch reply.Command.(type) {
+		case *pb.NoirReply_Signal:
+			signal := reply.GetSignal()
+			reqID := jsonrpc2.ID{Num: 0, Str: signal.RequestId, IsString: true}
+			switch signal.Payload.(type) {
+			case *pb.SignalReply_Join:
+				var answer webrtc.SessionDescription
+				json.Unmarshal(signal.GetJoin().Description, &answer)
+				conn.Reply(ctx, reqID, answer)
+				log.Debugf("answer %s", answer)
+			case *pb.SignalReply_Description:
+				var desc webrtc.SessionDescription
+				json.Unmarshal(signal.GetDescription(), &desc)
+				var method string
+				if desc.Type == webrtc.SDPTypeAnswer {
+					method = "answer"
+				} else {
+					method = "offer"
+				}
+				if signal.RequestId == "" {
+					conn.Notify(ctx, method, desc)
+					log.Debugf("notify %s %s", method, desc)
+				} else {
+					conn.Reply(ctx, reqID, desc)
+					log.Debugf("notify %s %s", method, desc)
+				}
+			case *pb.SignalReply_Trickle:
+				trickle := signal.GetTrickle()
+				var candidate webrtc.ICECandidateInit
+				json.Unmarshal([]byte(trickle.GetInit()), &candidate)
+				conn.Notify(ctx, "trickle", Trickle{
+					Target: int(trickle.Target.Number()),
+					Candidate: candidate,
+				})
+				log.Debugf("trickle %s", trickle)
+			default:
+				log.Errorf("unknown signal reply %s", signal)
 			}
-			if err := conn.Reply(ctx, req.ID, answer); err != nil {
-				log.Errorf("failed to send reply %s", err)
-				continue
-			}
+		default:
+			log.Warnf("non-signal reply on client channel %s", &reply)
 		}
-
-		if rpc.Method == "offer" {
-			var offer webrtc.SessionDescription
-			if err := json.Unmarshal(packed, &offer); err != nil {
-				log.Errorf("failed to unmarshal answer %s %s", err, packed)
-				continue
-			}
-			if err := conn.Notify(ctx, "offer", offer); err != nil {
-				log.Errorf("error sending offer %s", err)
-				continue
-			}
-		}
-
-		if rpc.Method == "trickle" {
-			var trickle noir.Trickle
-			if err := json.Unmarshal(packed, &trickle); err != nil {
-				log.Errorf("failed to unmarshal trickle %s %s", err, packed)
-				continue
-			}
-
-			if err := conn.Notify(ctx, "trickle", trickle); err != nil {
-				log.Errorf("error sending ice candidate %s", err)
-				continue
-			}
-		}
-
 	}
-	 */
 }

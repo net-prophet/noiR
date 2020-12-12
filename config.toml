@@ -1,24 +1,24 @@
-[sfu]
+[ion.sfu]
 # Ballast size in MiB, will allocate memory to reduce the GC trigger upto 2x the
 # size of ballast. Be aware that the ballast should be less than the half of memory
 # available.
-ballast = 0
+ballast = 64
 
-[router]
+[ion.router]
 # Limit the remb bandwidth in kbps
 # zero means no limits
 maxbandwidth = 1500
 # max buffer time by ms for video tracks
 maxbuffertime = 1000
 
-[router.simulcast]
+[ion.router.simulcast]
 # Prefer best quality initially
 bestqualityfirst = true
 # EXPERIMENTAL enable temporal layer change is currently an experimental feature,
 # enable only for testing.
 enabletemporallayer = false
 
-[webrtc]
+[ion.webrtc]
 # Range of ports that ion accepts WebRTC traffic on
 # Format: [min, max]   and max - min >= 100
 # portrange = [50000, 60000]
@@ -36,7 +36,7 @@ enabletemporallayer = false
 # "unified-plan-with-fallback"
 sdpsemantics = "unified-plan"
 
-[webrtc.candidates]
+[ion.webrtc.candidates]
 # In case you're deploying ion-sfu on a server which is configured with
 # a 1:1 NAT (e.g., Amazon EC2), you might want to also specify the public
 # address of the machine using the setting below. This will result in
@@ -50,4 +50,4 @@ sdpsemantics = "unified-plan"
 # icelite = true
 
 [log]
-level = "trace"
+level = "debug"

@@ -28,7 +28,11 @@ build: go_init protos
 
 run: 
 	echo "Running local demo: http://localhost:7070"
-	go run ./cmd/noir/main.go -c ./config.toml
+	go run ./cmd/noir/main.go -c ./config.toml -d :7070 -j :7000
+
+run_second:
+	echo "Running second demo: http://localhost:7071"
+	go run ./cmd/noir/main.go -c ./config.toml -d :7071 -j :7001
 
 docker: protos
 	docker build . -t ${CI_REGISTRY_IMAGE}:latest
@@ -43,7 +47,7 @@ tag:
 		  || echo "usage: make tag TAG=..."
 
 test_redis:
-	docker run -d --rm -p 6379:6379 --name noir-redis sameersbn/redis
+	docker rm -f noir-redis ; docker run -d --rm -p 6379:6379 --name noir-redis sameersbn/redis
 
 demo:
 	echo "Starting local demonstration at http://localhost:7070" && docker run --net host ghcr.io/net-prophet/noir:latest -d :7070 -j :7000

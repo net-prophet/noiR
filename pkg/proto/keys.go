@@ -9,17 +9,25 @@ func KeyPeerToRoom(peerID string) string {
 }
 
 func KeyRoomStatus(roomID string) string {
-	return "noir/room.status/" + roomID
+	return "noir/status.room/" + roomID
 }
 
 func KeyWorkerStatus(workerID string) string {
-	return "noir/worker.status/" + workerID
+	return "noir/status.worker/" + workerID
 }
 
 func KeyWorkerTopic(workerID string) string {
-	return "noir/worker.topic/" + workerID
+	return "noir/topic.to.worker/" + workerID
 }
 
 func KeyPeerStatus(peerID string) string {
-	return "noir/peer.status/" + peerID
+	return "noir/status.peer/" + peerID
+}
+
+func KeyTopicToPeer(peerID string) string {
+	return "noir/topic.to.pc/" + peerID
+}
+
+func KeyTopicFromPeer(peerID string) string {
+	return "noir/topic.from.pc/" + peerID
 }

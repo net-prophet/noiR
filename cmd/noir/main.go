@@ -14,12 +14,10 @@ import (
 	"github.com/spf13/viper"
 
 	log "github.com/pion/ion-log"
-	sfu "github.com/pion/ion-sfu/pkg/sfu"
-	"github.com/pion/webrtc/v3"
 )
 
 var (
-	conf           = sfu.Config{}
+	conf           = noir.Config{}
 	ctx            = context.Background()
 	file           string
 	redisURL       string
@@ -47,26 +45,6 @@ func showHelp() {
 	fmt.Println("      -h (show help info)")
 }
 
-type Command struct {
-	Method string `json:"method"`
-}
-
-// Join message sent when initializing a peer connection
-type Join struct {
-	Sid   string                    `json:"sid"`
-	Offer webrtc.SessionDescription `json:"offer"`
-}
-
-// Negotiation message sent when renegotiating the peer connection
-type Negotiation struct {
-	Desc webrtc.SessionDescription `json:"desc"`
-}
-
-// Trickle message sent when renegotiating the peer connection
-type Trickle struct {
-	Candidate webrtc.ICECandidateInit `json:"candidate"`
-}
-
 func load() bool {
 	_, err := os.Stat(file)
 	if err != nil {
@@ -87,12 +65,12 @@ func load() bool {
 		return false
 	}
 
-	if len(conf.WebRTC.ICEPortRange) > 2 {
+	if len(conf.Ion.WebRTC.ICEPortRange) > 2 {
 		fmt.Printf("config file %s loaded failed. range port must be [min,max]\n", file)
 		return false
 	}
 
-	if len(conf.WebRTC.ICEPortRange) != 0 && conf.WebRTC.ICEPortRange[1]-conf.WebRTC.ICEPortRange[0] < portRangeLimit {
+	if len(conf.Ion.WebRTC.ICEPortRange) != 0 && conf.Ion.WebRTC.ICEPortRange[1]-conf.Ion.WebRTC.ICEPortRange[0] < portRangeLimit {
 		fmt.Printf("config file %s loaded failed. range port must be [min, max] and max - min >= %d\n", file, portRangeLimit)
 		return false
 	}
@@ -104,10 +82,10 @@ func load() bool {
 func parse() bool {
 	flag.StringVar(&file, "c", "/configs/sfu.toml", "config file")
 	flag.StringVar(&redisURL, "u", "localhost:6379", "redisURL to use")
-	flag.StringVar(&demoAddr, "d", ":7070", "http addr to listen for demo")
-	flag.StringVar(&publicJrpcAddr, "j", ":7000", "jsonrpc addr for public")
-	flag.StringVar(&adminJrpcAddr, "a", ":7001", "jsonrpc addr for admin")
-	flag.StringVar(&grpcAddr, "g", ":50051", "grpc addr for admin")
+	flag.StringVar(&demoAddr, "d", "", "http addr to listen for demo")
+	flag.StringVar(&publicJrpcAddr, "j", "", "jsonrpc addr for public")
+	flag.StringVar(&adminJrpcAddr, "a", "", "jsonrpc addr for admin")
+	flag.StringVar(&grpcAddr, "g", "", "grpc addr for admin")
 	flag.StringVar(&cert, "cert", "", "public jsonrpc https cert file")
 	flag.StringVar(&key, "key", "", "public jsonrpc https key file")
 	help := flag.Bool("h", false, "help info")
@@ -133,7 +111,9 @@ func main() {
 	fixByFunc := []string{"Handle"}
 	log.Init(conf.Log.Level, fixByFile, fixByFunc)
 
-	log.Infof("--- noiR SFU ---")
+	id := noir.RandomString(8)
+
+	log.Infof("--- noiR SFU %s ---", id)
 
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     redisURL,
@@ -149,7 +129,7 @@ func main() {
 	}
 	sfu := noir.NewNoirSFU(conf)
 
-	mgr := noir.NewManager(&sfu, rdb, noir.RandomString(8))
+	mgr := noir.NewManager(&sfu, rdb, id)
 
 	go mgr.Noir()
 	defer mgr.Cleanup()

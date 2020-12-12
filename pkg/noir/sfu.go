@@ -29,13 +29,13 @@ type NoirSFU interface {
 }
 
 // NewNoirSFU will create an object that represent the NoirSFU interface
-func NewNoirSFU(c sfu.Config) NoirSFU {
+func NewNoirSFU(c Config) NoirSFU {
 	rand.Seed(time.Now().UnixNano())
 	id := RandomString(8)
 	// Init ballast
-	ballast := make([]byte, c.SFU.Ballast*1024*1024)
+	ballast := make([]byte, c.Ion.SFU.Ballast*1024*1024)
 
-	w := sfu.NewWebRTCTransportConfig(c)
+	w := sfu.NewWebRTCTransportConfig(c.Ion)
 
 	runtime.KeepAlive(ballast)
 

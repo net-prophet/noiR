@@ -65,17 +65,12 @@ func (m *Manager) CloseRoom(roomID string) {
 
 func (m *Manager) CloseClient(clientID string) {
 	client := m.clients[clientID]
-	roomID := m.redis.Get(pb.KeyPeerToRoom(clientID)).Val()
-	room := m.rooms[roomID]
-	session := room.Session()
-	session.RemovePeer(clientID)
+	defer m.redis.Del(pb.KeyPeerToRoom(clientID))
+	client.Close()
+
 	m.mu.Lock()
 	delete(m.clients, clientID)
 	m.mu.Unlock()
-
-	m.redis.Del(pb.KeyPeerToRoom(clientID))
-
-	client.Close()
 }
 
 func (m *Manager) CreateClient(signal *pb.SignalRequest) *sfu.Peer {
@@ -92,6 +87,10 @@ func (m *Manager) CreateClient(signal *pb.SignalRequest) *sfu.Peer {
 
 func (m *Manager) ClientPing(pid string, sid string) error {
 	return m.redis.Set(pb.KeyPeerToRoom(pid), sid, PeerPingFrequency).Err()
+}
+
+func(m *Manager) GetQueue(topic string, maxAge time.Duration) Queue {
+	return NewRedisQueue(m.redis, topic, maxAge)
 }
 
 func (m *Manager) WorkerForRoom(roomID string) (string, error) {
@@ -321,7 +320,7 @@ func (m *Manager) LoadStatus(key string) (*pb.NoirStatus, error) {
 
 // Local Memory Manager
 
-func NewTestManager(driver string, config sfu.Config) Manager {
+func NewTestManager(driver string, config Config) Manager {
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     driver,
 		Password: "",
@@ -357,13 +356,13 @@ func (m *Manager) Noir() {
 		case <-update.C:
 			m.UpdateAvailableWorkers()
 		case <-info.C:
-			log.Infof("%s: noirs=%d users=%d rooms=%d", m.worker.ID(), len(m.statuses), len(m.clients), m.RoomCount())
+			log.Debugf("%s: noirs=%d users=%d rooms=%d", m.worker.ID(), len(m.statuses), len(m.clients), m.RoomCount())
 		case <-quit:
-			log.Infof("quit requested, cleaning up...")
+			log.Warnf("quit requested, cleaning up...")
 			info.Stop()
 			update.Stop()
 			m.Cleanup()
-			log.Infof("cleaned up ok!")
+			log.Debugf("cleaned up ok!")
 			os.Exit(1)
 			return
 		}

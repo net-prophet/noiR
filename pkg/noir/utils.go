@@ -5,7 +5,6 @@ import (
 	"github.com/go-redis/redis"
 	pb "github.com/net-prophet/noir/pkg/proto"
 	log "github.com/pion/ion-log"
-	"github.com/pion/ion-sfu/pkg/sfu"
 	proto "google.golang.org/protobuf/proto"
 	"math/rand"
 	"os"
@@ -69,6 +68,10 @@ func ReadSignalAction(signal *pb.SignalRequest) (string, error) {
 	switch signal.Payload.(type) {
 	case *pb.SignalRequest_Join:
 		return action + "join", nil
+	case *pb.SignalRequest_Description:
+		return action + "description", nil
+	case *pb.SignalRequest_Trickle:
+		return action + "trickle", nil
 	}
 	return action, errors.New("unhandled action")
 }
@@ -97,12 +100,25 @@ func MarshalRequest(value *pb.NoirRequest) ([]byte, error) {
 	return proto.Marshal(value)
 }
 
+func MarshalReply(value *pb.NoirReply) ([]byte, error) {
+	return proto.Marshal(value)
+}
+
 func UnmarshalRequest(message []byte, destination *pb.NoirRequest) error {
 	return proto.Unmarshal(message, destination)
 }
 
 func EnqueueRequest(queue Queue, value *pb.NoirRequest) error {
 	command, err := MarshalRequest(value)
+	if err != nil {
+		return err
+	}
+	err = queue.Add(command)
+	return err
+}
+
+func EnqueueReply(queue Queue, value *pb.NoirReply) error {
+	command, err := MarshalReply(value)
 	if err != nil {
 		return err
 	}
@@ -128,7 +144,7 @@ func NewTestSetup() Manager {
 		Password: "",
 		DB:       0,
 	})
-	config := sfu.Config{}
+	config := Config{}
 	sfu := NewNoirSFU(config)
 	return NewManager(&sfu, rdb, "test-worker")
 }

@@ -84,6 +84,7 @@ message SignalRequest {
         bytes description = 3;
         Trickle trickle = 4;
     }
+    string requestId = 5; // optional, for requests with replies
 }
 
 message SignalReply {
@@ -95,6 +96,7 @@ message SignalReply {
         string iceConnectionState = 5;
         string error = 6;
     }
+    string requestId = 7; // optional, for requests with replies
 }
 
 message JoinRequest {
