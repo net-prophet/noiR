@@ -64,4 +64,16 @@ func (q *redisQueue) Count() (int64, error) {
 	return q.client.LLen(q.topic).Result()
 }
 
+func (q *redisQueue) Subscribe() (chan []byte, chan struct{}) {
+	msg, quit := make(chan []byte), make(chan struct{})
 
+	go func () {
+		for {
+			select {
+
+			}
+		}
+	}()
+
+	return msg, quit
+}

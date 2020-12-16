@@ -243,7 +243,7 @@ func (w *worker) PeerChannel(pid string, peer *sfu.Peer) {
 				var candidate webrtc.ICECandidateInit
 				err := json.Unmarshal([]byte(trickle.GetInit()), &candidate)
 				if err != nil {
-					log.Errorf("unmarshal err: %s", err, trickle.GetInit())
+					log.Errorf("unmarshal err: %s %s", err, trickle.GetInit())
 					continue
 				}
 				peer.Trickle(candidate, int(trickle.Target.Number()))

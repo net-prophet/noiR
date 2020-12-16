@@ -7,6 +7,7 @@ import (
 	pb "github.com/net-prophet/noir/pkg/proto"
 	log "github.com/pion/ion-log"
 	sfu "github.com/pion/ion-sfu/pkg/sfu"
+	"google.golang.org/protobuf/types/known/timestamppb"
 	"math/rand"
 	"os"
 	"os/signal"
@@ -16,20 +17,20 @@ import (
 )
 
 const (
-	ManagerPingFrequency  = 10 * time.Second
-	PeerPingFrequency = 25 * time.Second
-	WorkersKey       = "noir/list_workers"
+	ManagerPingFrequency = 10 * time.Second
+	PeerPingFrequency    = 25 * time.Second
+	WorkersKey           = "noir/list_workers"
 )
 
 type Manager struct {
-	id string
+	id       string
 	redis    *redis.Client
 	updated  time.Time
 	router   Router
 	worker   Worker
 	config   sfu.Config
 	sfu      *NoirSFU
-	statuses map[string]pb.WorkerStatus
+	statuses map[string]pb.WorkerData
 	clients  map[string]*sfu.Peer
 	rooms    map[string]Room
 	mu       sync.RWMutex
@@ -48,7 +49,6 @@ func NewManager(sfu *NoirSFU, client *redis.Client, nodeID string) Manager {
 	return manager
 }
 
-
 func (m *Manager) OpenRoom(roomID string, session *sfu.Session) *Room {
 	room := NewRoom(roomID, m.ID(), session)
 	m.mu.Lock()
@@ -66,7 +66,10 @@ func (m *Manager) CloseRoom(roomID string) {
 func (m *Manager) CloseClient(clientID string) {
 	client := m.clients[clientID]
 	defer m.redis.Del(pb.KeyPeerToRoom(clientID))
-	client.Close()
+
+	if client != nil {
+		client.Close()
+	}
 
 	m.mu.Lock()
 	delete(m.clients, clientID)
@@ -89,7 +92,7 @@ func (m *Manager) ClientPing(pid string, sid string) error {
 	return m.redis.Set(pb.KeyPeerToRoom(pid), sid, PeerPingFrequency).Err()
 }
 
-func(m *Manager) GetQueue(topic string, maxAge time.Duration) Queue {
+func (m *Manager) GetQueue(topic string, maxAge time.Duration) Queue {
 	return NewRedisQueue(m.redis, topic, maxAge)
 }
 
@@ -115,11 +118,11 @@ func (m *Manager) RoomCount() int {
 
 func NewRedisManager(provider *NoirSFU, client *redis.Client, nodeID string) Manager {
 	manager := Manager{redis: client,
-		statuses: make(map[string]pb.WorkerStatus),
+		statuses: make(map[string]pb.WorkerData),
 		clients:  make(map[string]*sfu.Peer),
 		rooms:    make(map[string]Room),
-		sfu: provider,
-		id: nodeID,
+		sfu:      provider,
+		id:       nodeID,
 	}
 	(*provider).AttachManager(&manager)
 	return manager
@@ -138,8 +141,7 @@ func (m *Manager) SFU() *NoirSFU {
 
 func (m *Manager) Checkin() error {
 	id := m.worker.ID()
-	now, _ := time.Now().MarshalText()
-	status := &pb.WorkerStatus{Id: id, LastUpdate: string(now)}
+	status := &pb.WorkerData{Id: id, LastUpdate: timestamppb.Now()}
 	value, err := proto.Marshal(status)
 	if err != nil {
 		return err
@@ -172,10 +174,10 @@ func (m *Manager) RandomWorkerId() (string, error) {
 	return ids[rand.Intn(len(ids))], nil
 }
 
-func (m *Manager) GetRemoteWorkerStatus(workerID string) (*pb.WorkerStatus, error) {
+func (m *Manager) GetRemoteWorkerData(workerID string) (*pb.WorkerData, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	loaded, err := m.LoadStatus(pb.KeyWorkerStatus(workerID))
+	loaded, err := m.LoadData(pb.KeyWorkerData(workerID))
 	if err != nil {
 		return nil, err
 	}
@@ -210,25 +212,23 @@ func (m *Manager) UpdateAvailableWorkers() error {
 		return err
 	}
 
-	m.statuses = make(map[string]pb.WorkerStatus)
+	m.statuses = make(map[string]pb.WorkerData)
 
 	for _, id := range ids {
 		status, err := m.redis.HGet(WorkersKey, id).Result()
 		if err != nil {
-			log.Errorf("error getting worker status %s", err)
+			log.Errorf("error getting worker data %s", err)
 			return err
 		}
 
-		var decode pb.WorkerStatus
+		var decode pb.WorkerData
 
 		if err := proto.Unmarshal([]byte(status), &decode); err != nil {
-			log.Errorf("error decoding worker status, ignoring worker %s", err)
+			log.Errorf("error decoding worker data, ignoring worker %s", err)
 			delete(m.statuses, id)
 			continue
 		}
-		var last time.Time
-		last.UnmarshalText([]byte(decode.LastUpdate))
-		if age := time.Now().Sub(last); age > 2*ManagerPingFrequency && decode.Id != m.worker.ID() {
+		if age := time.Now().Sub(decode.LastUpdate.AsTime()); age > 2*ManagerPingFrequency && decode.Id != m.worker.ID() {
 			log.Warnf("haven't heard from %s; marking it offline", decode.Id)
 			m.MarkOffline(decode.Id)
 			continue
@@ -270,14 +270,14 @@ func (m *Manager) GetRemoteRoomExists(roomID string) (bool, error) {
 	return val == 0, err
 }
 
-func (m *Manager) GetRemoteRoomStatus(roomID string) (*pb.RoomStatus, error) {
-	loaded, err := m.LoadStatus(pb.KeyRoomStatus(roomID))
+func (m *Manager) GetRemoteRoomData(roomID string) (*pb.RoomData, error) {
+	loaded, err := m.LoadData(pb.KeyRoomData(roomID))
 	if err != nil {
 		return nil, err
 	}
 	room := m.rooms[roomID]
-	room.UpdateStatus(loaded.GetRoom())
-	return room.LatestStatus(), nil
+	room.UpdateData(loaded.GetRoom())
+	return room.LatestData(), nil
 }
 
 func (m *Manager) ClaimRoomNode(roomID string, nodeID string) (bool, error) {
@@ -285,7 +285,7 @@ func (m *Manager) ClaimRoomNode(roomID string, nodeID string) (bool, error) {
 }
 
 // Only on RedisManager
-func (m *Manager) SaveStatus(key string, status *pb.NoirStatus, expiry time.Duration) error {
+func (m *Manager) SaveData(key string, status *pb.NoirObject, expiry time.Duration) error {
 	data, err := proto.Marshal(status)
 
 	if err != nil {
@@ -303,8 +303,8 @@ func (m *Manager) SaveStatus(key string, status *pb.NoirStatus, expiry time.Dura
 	return nil
 }
 
-func (m *Manager) LoadStatus(key string) (*pb.NoirStatus, error) {
-	var load *pb.NoirStatus
+func (m *Manager) LoadData(key string) (*pb.NoirObject, error) {
+	var load *pb.NoirObject
 	data, err := m.redis.Get(key).Result()
 	if err != nil {
 		log.Warnf("failed loading noirstatus %s", err)
@@ -330,7 +330,7 @@ func NewTestManager(driver string, config Config) Manager {
 	return NewRedisManager(&sfu, rdb, RandomString(4))
 }
 
-func (m *Manager) WorkerStatus(id string) *pb.WorkerStatus {
+func (m *Manager) WorkerData(id string) *pb.WorkerData {
 	status := m.statuses[id]
 	return &status
 }

@@ -18,7 +18,7 @@ protos:
 		--go-grpc_out=. \
 		--go-grpc_opt=paths=source_relative \
 		pkg/proto/noir.proto \
-		pkg/proto/status.proto
+		pkg/proto/objects.proto
 
 clean:
 	rm -rf bin
@@ -26,7 +26,7 @@ clean:
 build: go_init protos
 	go build -o bin/noir $(GO_LDFLAGS) ./cmd/noir/main.go
 
-run: 
+run: test_redis
 	echo "Running local demo: http://localhost:7070"
 	go run ./cmd/noir/main.go -c ./config.toml -d :7070 -j :7000
 
@@ -52,7 +52,7 @@ test_redis:
 demo:
 	echo "Starting local demonstration at http://localhost:7070" && docker run --net host ghcr.io/net-prophet/noir:latest -d :7070 -j :7000
 
-test: go_init
+test: go_init test_redis
 	TEST_REDIS=${TEST_REDIS} go test \
 		-timeout 120s \
 		-coverprofile=cover.out -covermode=atomic \

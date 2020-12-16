@@ -1,0 +1,37 @@
+syntax = "proto3";
+
+option go_package = "github.com/net-prophet/noir/pkg/proto";
+
+import "google/protobuf/timestamp.proto";
+
+package noir;
+
+message NoirObject {
+    oneof data {
+        WorkerData worker = 1;
+        RoomData room = 2;
+        PeerData peer = 3;
+    }
+}
+
+message WorkerData {
+    string id = 1;
+    google.protobuf.Timestamp lastUpdate = 2;
+}
+
+message RoomData {
+    string id = 1;
+    google.protobuf.Timestamp lastUpdate = 2;
+    string title = 3;
+    string workerID = 4;
+    google.protobuf.Timestamp expires = 5;
+    string joinPassword = 6;
+    string publishPassword = 7;
+    bool singlePublisher = 8;
+}
+
+message PeerData {
+    string id = 1;
+    google.protobuf.Timestamp lastUpdate = 2;
+    string roomID = 3;
+}

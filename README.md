@@ -18,17 +18,27 @@
 
 *noiR: it's like R(edis)-ion, but in reverse*
 
+### Features
++ Blazing fast full-featured WebRTC SFU for modern video conferences
++ Admin API for creating rooms, managing members and seeing health statistics
++ Basic Authentication - Require a password to join, or require a password to publish
++ Room Limits - Limit the number of members, publishers, or the maximum age of a room
++ "Channels" - A channel is a 1-publisher fanout room with publish authentication
++ (Planned) Stream Recording - Automatically record all streams in a room and upload them to S3
++ (Planned) Play into Room - Play a video or audio file from local disk or URL into a room or channel
++ (Planned) Admin Dashboard
+
 ### About
 
 `noiR` is a redis-backed SFU cluster based on [`ion-sfu`](https://github.com/pion/ion-sfu).
 A [selective forwarding unit](https://webrtcglossary.com/sfu/) is a video routing service which allows webrtc sessions to scale more efficiently.
 
-`noiR` listens on the same ports as `ion-sfu` and accepts the same commands, while adding extra support for
+`noiR` listens on the same ports as `ion-sfu` and accepts the same commands, while adding admin commands, support for
 managing membership, and a *very naive* single-datacenter scaling model.
 
-Any ion client can send signaling messages to any `noiR` node in the cluster.
-When `noiR` receives a message from a peer, it retains the signaling connection,
-but forwards the messages over redis to whichever `noir` node is hosting the room.
+Existing `ion` jsonrpc clients can connect to any `noiR` node in the cluster.
+When `noiR` receives a message from a peer, it keeps the websocket open with the peer for signalling,
+but all messages are forwarded over redis to whichever `noir` node is hosting the room.
 
 `noiR` keeps track of how many publishers or subscribers are in a room, and manages client lifecycle and cleanup.
 
@@ -41,7 +51,7 @@ or any regular `ion-sfu` client; management commands get sent over a separate `j
 
 ### Usage
 
-First of all, don't use `noiR`. That's just reasonable advice -- it's a very young project, we are novice golang devs,
+First of all, "don't use `noiR`"! That's just reasonable advice -- it's a very young project, we are novice golang devs,
 the architecture is unproven, and the whole API might change. If you do use `noiR`, you will immediately find bugs, or
 need new features, and we welcome all the help you can send! `noiR` might never be more than a neat
 demonstration without your help.
@@ -69,13 +79,13 @@ demonstration without your help.
 - [x] Client JSONRPC API :7000 - JSONRPC-Redis Bridge (so the `ion-sfu/examples` work)
 - [x] "Doing It Live" - Adapted my own dependent codebases to start using `noiR` immediately
 - [x] "Demo Mode": Bundled `ion-sdk-react` storybooks for instant testing in a browser
-- [ ] Learn to write golang unit tests; write unit tests :'(
+- [x] Learn to write golang unit tests; write unit tests :'(
 - [ ] Ensure cleanup safety, no dead peers
 - [ ] Admin JSONRPC API :7001 (management commands and/or multiplexed client connections)
 - [ ] Admin gRPC API :50051 (management commands and/or multiplexed client connections)
-- [ ] Load test cluster mode with `ion-load-tool` (depends on `gRPC` API)
 - [ ] Room permissions - Allow/Deny new joins, basicauth room passwords, admin squelch + kick
 - [ ] Stream permissions - Fine-grained control over audio/video publish permissions
+- [ ] Load test cluster mode with `ion-load-tool` (depends on `gRPC` API)
 - [ ] In-cluster SFU-SFU Relay (HA Stream Mirroring, Large Room Support)
 - [ ] Cross-cluster SFU-SFU Relay (Geo-Stream Mirroring)
 
@@ -84,7 +94,7 @@ demonstration without your help.
 We started this project as an exercise to develop our golang skills, but also to scratch an itch -- `ion-sfu`
 aspires to be the most lightweight SFU, the simplest possible version of itself. `noiR` is, by contrast, highly
 opinionated and with more batteries included. If you're building a next-generation video conferencing solution,
-and want a 20mb micro-SFU with a natural, flexible API for managing your sessions, `noiR` might be right for you.
+and want a lightweight SFU that's ready out-of-the-box, `noiR` might be right for you.
 
 ### Contributing
 

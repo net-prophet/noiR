@@ -4,7 +4,7 @@ import (
 	pb "github.com/net-prophet/noir/pkg/proto"
 	sfu "github.com/pion/ion-sfu/pkg/sfu"
 	"github.com/pion/webrtc/v3"
-	"time"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Client represent the Client model
@@ -12,13 +12,12 @@ type Client struct {
 	sfu.Peer
 	clientID string
 	roomID   string
-	status   *pb.PeerStatus
+	data     *pb.PeerData
 }
 
 // NewClient will create an object that represent the Signal interface
 func NewClient(provider *sfu.SFU, clientID string, roomID string) Client {
-	peer := *sfu.NewPeer(provider)
-	return Client{Peer: peer, clientID: clientID, roomID: roomID, status: &pb.PeerStatus{Id: clientID, LastUpdate: time.Now().String()}}
+	return Client{Peer: *sfu.NewPeer(provider), clientID: clientID, roomID: roomID, data: &pb.PeerData{Id: clientID, LastUpdate: timestamppb.Now()}}
 }
 
 func (s *Client) Join(roomID string, sdp webrtc.SessionDescription) (*webrtc.SessionDescription, error) {

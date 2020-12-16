@@ -196,7 +196,7 @@ func (s *clientJSONRPCBridge) Listen(ctx context.Context, conn *jsonrpc2.Conn, r
 				var answer webrtc.SessionDescription
 				json.Unmarshal(signal.GetJoin().Description, &answer)
 				conn.Reply(ctx, reqID, answer)
-				log.Debugf("answer %s", answer)
+				//log.Debugf("answer %s", answer)
 			case *pb.SignalReply_Description:
 				var desc webrtc.SessionDescription
 				json.Unmarshal(signal.GetDescription(), &desc)
@@ -208,10 +208,10 @@ func (s *clientJSONRPCBridge) Listen(ctx context.Context, conn *jsonrpc2.Conn, r
 				}
 				if signal.RequestId == "" {
 					conn.Notify(ctx, method, desc)
-					log.Debugf("notify %s %s", method, desc)
+					//log.Debugf("notify %s %s", method, desc)
 				} else {
 					conn.Reply(ctx, reqID, desc)
-					log.Debugf("notify %s %s", method, desc)
+					//log.Debugf("notify %s %s", method, desc)
 				}
 			case *pb.SignalReply_Trickle:
 				trickle := signal.GetTrickle()
@@ -221,7 +221,7 @@ func (s *clientJSONRPCBridge) Listen(ctx context.Context, conn *jsonrpc2.Conn, r
 					Target: int(trickle.Target.Number()),
 					Candidate: candidate,
 				})
-				log.Debugf("trickle %s", trickle)
+				//log.Debugf("trickle %s", trickle)
 			default:
 				log.Errorf("unknown signal reply %s", signal)
 			}
