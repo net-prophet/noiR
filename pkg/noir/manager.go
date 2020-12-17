@@ -8,6 +8,8 @@ import (
 	pb "github.com/net-prophet/noir/pkg/proto"
 	log "github.com/pion/ion-log"
 	sfu "github.com/pion/ion-sfu/pkg/sfu"
+	"github.com/pion/sdp/v3"
+	"github.com/pion/webrtc/v3"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"math/rand"
 	"os"
@@ -83,6 +85,12 @@ func (m *Manager) CreateClient(signal *pb.SignalRequest) (*sfu.Peer, error) {
 	provider := *m.SFU()
 	room, err := m.CreateRoomIfNotExists(join.Sid)
 
+	var offer webrtc.SessionDescription
+	offer = webrtc.SessionDescription{
+		Type: webrtc.SDPTypeOffer,
+		SDP:  string(join.Description),
+	}
+
 	if room.Options.MaxAgeSeconds > 0 {
 		if time.Now().After(GetEndTime(room)) && time.Now().Before(GetCleanupTime(room)) {
 			return nil, errors.New("rejecting joining an expired room")
@@ -92,6 +100,15 @@ func (m *Manager) CreateClient(signal *pb.SignalRequest) (*sfu.Peer, error) {
 	if err != nil {
 		return nil, errors.New(fmt.Sprintf("unable to ensure room %s: %s", join.Sid, err))
 	}
+	desc, err := ParseSDP(offer)
+	numTracks := len(desc.MediaDescriptions)
+	if err != nil {
+		return nil, err
+	}
+	if numTracks != 1 {
+		return nil, errors.New("when you join you must specify 1 empty data track")
+	}
+
 	peer := sfu.NewPeer(provider)
 	err = m.ClientPing(pid, join.Sid)
 	if err != nil {
@@ -427,11 +444,27 @@ func (m *Manager) CreateRoomIfNotExists(roomID string) (*pb.RoomData, error) {
 		log.Infof("room %s does not exist, auto-creating", roomID)
 
 		room := NewRoom(roomID)
-		room.data.Options.MaxAgeSeconds = 30
-		room.data.Options.KeyExpiryFactor = 2
 
 		SaveRoomData(roomID, &room.data, m)
 
 		return &room.data, nil
 	}
+}
+
+func (m *Manager) ValidateOffer(room *pb.RoomData, userID string, offer webrtc.SessionDescription) (*sdp.SessionDescription, error) {
+	desc, err := ParseSDP(offer)
+	return desc, err
+}
+
+func ParseSDP(offer webrtc.SessionDescription) (*sdp.SessionDescription, error) {
+	desc, err := offer.Unmarshal()
+	if err != nil {
+		return nil, err
+	}
+	numTracks := len(desc.MediaDescriptions)
+
+	if numTracks == 0 || desc.MediaDescriptions[0].MediaName.Media != "application" {
+		return nil, errors.New("first track must be an empty datachannel")
+	}
+	return desc, nil
 }

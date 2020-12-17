@@ -203,12 +203,12 @@ func (w *worker) HandleJoin(signal *pb.SignalRequest) error {
 		},
 	})
 
-	go w.PeerChannel(pid, peer)
+	go w.PeerChannel(pid, join.Sid, peer)
 
 	return nil
 }
 
-func (w *worker) PeerChannel(pid string, peer *sfu.Peer) {
+func (w *worker) PeerChannel(pid string, roomID string, peer *sfu.Peer) {
 	recv := w.manager.GetQueue(pb.KeyTopicToPeer(pid), PeerPingFrequency)
 	send := w.manager.GetQueue(pb.KeyTopicFromPeer(pid), PeerPingFrequency)
 	for {
@@ -226,7 +226,7 @@ func (w *worker) PeerChannel(pid string, peer *sfu.Peer) {
 			signal := request.GetSignal()
 			switch signal.Payload.(type) {
 			case *pb.SignalRequest_Kill:
-				log.Infof("got KillRequest for peer %s", pid)
+				log.Debugf("got KillRequest for peer %s", pid)
 				w.manager.CloseClient(pid)
 				return
 			case *pb.SignalRequest_Description:
@@ -237,12 +237,25 @@ func (w *worker) PeerChannel(pid string, peer *sfu.Peer) {
 					continue
 				}
 				if desc.Desc.Type == webrtc.SDPTypeAnswer {
-					log.Infof("got answer, setting description")
+					log.Debugf("got answer, setting description")
 					peer.SetRemoteDescription(desc.Desc)
 				} else if desc.Desc.Type == webrtc.SDPTypeOffer {
+					roomData, err := w.manager.GetRemoteRoomData(roomID)
+					if err != nil {
+						log.Errorf("err getting room to validate offer: %s", err)
+						continue
+					}
+
+					_, err = w.manager.ValidateOffer(roomData, pid, desc.Desc)
+
+					if err != nil {
+						log.Infof("rejected offer: %s", err)
+						continue
+					}
+
 					answer, _ := peer.Answer(desc.Desc)
 					bytes, err := json.Marshal(answer)
-					log.Infof("got offer, sending reply %s", string(bytes))
+					log.Debugf("got offer, sending reply %s", string(bytes))
 					err = EnqueueReply(send, &pb.NoirReply{
 						Command: &pb.NoirReply_Signal{
 							Signal: &pb.SignalReply{
