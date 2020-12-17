@@ -2,6 +2,8 @@ syntax = "proto3";
 
 option go_package = "github.com/net-prophet/noir/pkg/proto";
 
+import "google/protobuf/timestamp.proto";
+
 package noir;
 
 /* ****************************************************
@@ -17,7 +19,7 @@ message NoirRequest {
     string action = 3;
     oneof command {
       SignalRequest signal = 4;
-      SessionRequest session = 5;
+      RoomAdminRequest roomAdmin = 5;
     }
 }
 
@@ -26,38 +28,31 @@ message NoirReply {
     string at = 2;
     oneof command {
         SignalReply signal = 3;
-        SessionReply session = 4;
+        RoomAdminReply roomAdmin = 4;
         string error = 5;
     }
 }
 
 /* ****************************************************
-    SESSION COMMANDS - SESSION MANAGEMENT
+    Room Admin Commands
  **************************************************** */
-message SessionRequest {
-    string sid = 1;
+message RoomAdminRequest {
+    string roomID = 1;
     oneof payload {
-        ExpireSessionRequest stop = 2;
+        OpenRoomRequest openRoom = 2;
         PlayFileRequest play_file = 3;
     }
 }
 
-message SessionReply {
-    string sid = 1;
+message RoomAdminReply {
+    string roomID = 1;
     oneof payload {
-        ExpireSessionReply stop = 2;
-        PlayFileReply play_file = 3;
-        string error = 6;
+        string error = 2;
     }
 }
 
-message ExpireSessionRequest {
-    string when = 1; // when will be now if not specified
-}
-
-message ExpireSessionReply {
-    string when = 1;
-    bool status = 2;
+message OpenRoomRequest {
+  RoomOptions options = 1;
 }
 
 message PlayFileRequest {
@@ -115,4 +110,59 @@ message Trickle {
     }
     Target target = 1;
     string init = 2;
+}
+
+
+/*
+NOIR OBJECTS - REDIS KEYS:
+
+Workers:
+HSET /noir/obj/worker.health [123] => WorkerHealth
+ + Hash is used for worker health so we can HGETALL
+
+SETEX /noir/obj/room.options/{my_room} => RoomOptions
+SETEX /noir/obj/room.health/{my_room} => RoomOptions
+ + SETEX is best for rooms so the room is reserved until the key expires
+ + health and options keys are separate so that health can quickly be replaced
+
+Peers:
+HSET /noir/obj/room.peers/ => PeerData
+
+ */
+
+
+message NoirObject {
+    oneof data {
+        WorkerData worker = 1;
+        RoomData room = 2;
+        PeerData peer = 3;
+    }
+}
+
+message WorkerData {
+    string id = 1;
+    google.protobuf.Timestamp lastUpdate = 2;
+}
+
+message RoomData {
+    string id = 1;
+    google.protobuf.Timestamp created = 2;
+    google.protobuf.Timestamp lastUpdate = 3;
+    string workerID = 4;
+    RoomOptions options = 5;
+}
+message RoomOptions {
+    string title = 1;
+    int32 maxAgeSeconds = 2;
+    int32 keyExpiryFactor = 3;
+    string joinPassword = 4;
+    string publishPassword = 5;
+    int32 maxPublishers = 6;
+    int32 maxPeers = 7;
+}
+
+message PeerData {
+    string id = 1;
+    google.protobuf.Timestamp lastUpdate = 2;
+    string roomID = 3;
 }

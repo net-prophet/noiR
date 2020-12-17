@@ -9,8 +9,8 @@ import (
 	"net"
 	"net/http"
 )
-// server.go contains public API handlers
 
+// server.go contains public API handlers
 
 func PublicJSONRPC(mgr *noir.Manager, publicJrpcAddr string, key string, cert string) {
 	upgrader := websocket.Upgrader{

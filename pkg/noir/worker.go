@@ -91,6 +91,17 @@ func (w *worker) Handle(request *pb.NoirRequest) error {
 	if strings.HasPrefix(request.Action, "request.signal.") {
 		return w.HandleSignal(request)
 	}
+	if strings.HasPrefix(request.Action, "request.roomadmin.") {
+		return w.HandleRoomAdmin(request)
+	}
+	return nil
+}
+
+func (w *worker) HandleRoomAdmin(request *pb.NoirRequest) error {
+	admin := request.GetRoomAdmin()
+	if request.Action == "request.roomadmin.openroom" {
+		w.manager.OpenRoomFromRequest(admin)
+	}
 	return nil
 }
 
@@ -107,7 +118,11 @@ func (w *worker) HandleJoin(signal *pb.SignalRequest) error {
 	defer w.mu.Unlock()
 	mgr := *w.manager
 
-	peer := mgr.CreateClient(signal)
+	peer, err := mgr.CreateClient(signal)
+
+	if err != nil {
+		return err
+	}
 
 	join := signal.GetJoin()
 	pid := signal.Id
@@ -227,9 +242,9 @@ func (w *worker) PeerChannel(pid string, peer *sfu.Peer) {
 					err = EnqueueReply(send, &pb.NoirReply{
 						Command: &pb.NoirReply_Signal{
 							Signal: &pb.SignalReply{
-								Id:      pid,
+								Id:        pid,
 								RequestId: signal.RequestId,
-								Payload: &pb.SignalReply_Description{Description: bytes},
+								Payload:   &pb.SignalReply_Description{Description: bytes},
 							},
 						},
 					})

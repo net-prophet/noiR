@@ -2,6 +2,7 @@ package noir
 
 import (
 	"errors"
+	"fmt"
 	"github.com/go-redis/redis"
 	"github.com/golang/protobuf/proto"
 	pb "github.com/net-prophet/noir/pkg/proto"
@@ -49,11 +50,11 @@ func NewManager(sfu *NoirSFU, client *redis.Client, nodeID string) Manager {
 	return manager
 }
 
-func (m *Manager) OpenRoom(roomID string, session *sfu.Session) *Room {
-	room := NewRoom(roomID, m.ID(), session)
+func (m *Manager) BindRoomSession(room Room, session *sfu.Session) *Room {
+	room.Bind(session, m)
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.rooms[roomID] = room
+	m.rooms[room.id] = room
 	return &room
 }
 
@@ -76,16 +77,31 @@ func (m *Manager) CloseClient(clientID string) {
 	m.mu.Unlock()
 }
 
-func (m *Manager) CreateClient(signal *pb.SignalRequest) *sfu.Peer {
+func (m *Manager) CreateClient(signal *pb.SignalRequest) (*sfu.Peer, error) {
 	join := signal.GetJoin()
 	pid := signal.Id
 	provider := *m.SFU()
+	room, err := m.CreateRoomIfNotExists(join.Sid)
+
+	if room.Options.MaxAgeSeconds > 0 {
+		if time.Now().After(GetEndTime(room)) && time.Now().Before(GetCleanupTime(room)) {
+			return nil, errors.New("rejecting joining an expired room")
+		}
+	}
+
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("unable to ensure room %s: %s", join.Sid, err))
+	}
 	peer := sfu.NewPeer(provider)
-	m.ClientPing(pid, join.Sid)
+	err = m.ClientPing(pid, join.Sid)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("unable to ping new peer %s: %s", pid, err))
+	}
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.clients[pid] = peer
-	return peer
+	return peer, nil
 }
 
 func (m *Manager) ClientPing(pid string, sid string) error {
@@ -273,6 +289,7 @@ func (m *Manager) GetRemoteRoomExists(roomID string) (bool, error) {
 func (m *Manager) GetRemoteRoomData(roomID string) (*pb.RoomData, error) {
 	loaded, err := m.LoadData(pb.KeyRoomData(roomID))
 	if err != nil {
+		log.Errorf("error loading room data! %s", err)
 		return nil, err
 	}
 	room := m.rooms[roomID]
@@ -304,18 +321,18 @@ func (m *Manager) SaveData(key string, status *pb.NoirObject, expiry time.Durati
 }
 
 func (m *Manager) LoadData(key string) (*pb.NoirObject, error) {
-	var load *pb.NoirObject
+	var load pb.NoirObject
 	data, err := m.redis.Get(key).Result()
 	if err != nil {
 		log.Warnf("failed loading noirstatus %s", err)
 		return nil, err
 	}
-	if err = proto.Unmarshal([]byte(data), load); err != nil {
+	if err = proto.Unmarshal([]byte(data), &load); err != nil {
 		log.Warnf("failed unmarshaling noirstatus %s", err)
 		return nil, err
 	}
 
-	return load, nil
+	return &load, nil
 }
 
 // Local Memory Manager
@@ -371,4 +388,50 @@ func (m *Manager) Noir() {
 
 func (m *Manager) MarkOffline(workerID string) {
 	m.redis.HDel(WorkersKey, workerID)
+}
+
+func (m *Manager) OpenRoomFromRequest(admin *pb.RoomAdminRequest) error {
+	_, err := m.GetRemoteRoomData(admin.RoomID)
+	if err == nil {
+		return errors.New("room already exists") // Room exists
+	}
+	openRoom := admin.GetOpenRoom()
+
+	log.Infof("creating room %s", admin.RoomID)
+	room := NewRoom(admin.RoomID)
+	room.SetOptions(openRoom.GetOptions())
+	SaveRoomData(admin.RoomID, &room.data, m)
+	return nil
+}
+
+func (m *Manager) CreateRoomIfNotExists(roomID string) (*pb.RoomData, error) {
+	if room, ok := m.rooms[roomID]; ok {
+		return &room.data, nil // Room exists
+	}
+	exists, err := m.redis.Exists(pb.KeyRoomData(roomID)).Result()
+
+	if err != nil {
+		return nil, err
+	}
+
+	if exists == 1 {
+		data, err := m.GetRemoteRoomData(roomID)
+		log.Infof("looked up room %s, expires at %s", roomID, GetEndTime(data))
+		log.Infof("looked up room %s, cleanup at %s", roomID, GetCleanupTime(data))
+		if err == nil {
+			return data, nil // Room exists
+		}
+		return nil, err
+	} else {
+		// Room did not exist, create it
+		log.Infof("room %s does not exist, auto-creating", roomID)
+
+		room := NewRoom(roomID)
+		room.data.Options.MaxAgeSeconds = 30
+		room.data.Options.KeyExpiryFactor = 2
+
+		SaveRoomData(roomID, &room.data, m)
+
+		return &room.data, nil
+	}
 }

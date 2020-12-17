@@ -12,4 +12,3 @@ type Join struct {
 type Negotiation struct {
 	Desc webrtc.SessionDescription `json:"desc"`
 }
-

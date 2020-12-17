@@ -16,7 +16,7 @@ type Queue interface {
 
 type redisQueue struct {
 	client *redis.Client
-	topic string
+	topic  string
 	maxAge time.Duration
 }
 
@@ -67,11 +67,9 @@ func (q *redisQueue) Count() (int64, error) {
 func (q *redisQueue) Subscribe() (chan []byte, chan struct{}) {
 	msg, quit := make(chan []byte), make(chan struct{})
 
-	go func () {
+	go func() {
 		for {
-			select {
-
-			}
+			select {}
 		}
 	}()
 

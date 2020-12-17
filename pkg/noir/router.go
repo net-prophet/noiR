@@ -32,7 +32,7 @@ func NewRouter(queue Queue, mgr *Manager) Router {
 func (r *router) HandleForever() {
 	log.Debugf("router starting on topic %s", r.queue.Topic())
 	for {
-		if err := r.HandleNext() ; err != nil {
+		if err := r.HandleNext(); err != nil {
 			log.Errorf("error routing command: %s", err)
 		}
 	}
@@ -65,7 +65,7 @@ func (r *router) NextCommand() (*pb.NoirRequest, error) {
 func (r *router) Handle(request *pb.NoirRequest) error {
 	var routeErr error
 	target := ""
-	if strings.HasPrefix(request.Action[:15],"request.signal.") {
+	if strings.HasPrefix(request.Action[:15], "request.signal.") {
 		// Signal messages get routed to the worker handling the Room
 		room, _ := r.mgr.LookupSignalRoomID(request.GetSignal())
 

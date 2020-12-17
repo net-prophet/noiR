@@ -19,8 +19,8 @@ type noirSFU struct {
 	router   sfu.RouterConfig
 	mu       sync.RWMutex
 	sessions map[string]*sfu.Session
-	nodeID string
-	manager *Manager
+	nodeID   string
+	manager  *Manager
 }
 
 type NoirSFU interface {
@@ -40,9 +40,9 @@ func NewNoirSFU(c Config) NoirSFU {
 	runtime.KeepAlive(ballast)
 
 	return &noirSFU{
-		webrtc: w,
+		webrtc:   w,
 		sessions: make(map[string]*sfu.Session),
-		nodeID: id,
+		nodeID:   id,
 	}
 
 }
@@ -50,7 +50,6 @@ func NewNoirSFU(c Config) NoirSFU {
 func (s *noirSFU) AttachManager(manager *Manager) {
 	s.manager = manager
 }
-
 
 func (s *noirSFU) ensureSession(sessionID string) *sfu.Session {
 	s.mu.Lock()
@@ -65,13 +64,20 @@ func (s *noirSFU) ensureSession(sessionID string) *sfu.Session {
 	session := sfu.NewSession(sessionID)
 	session.OnClose(func() {
 		log.Infof("closing session %s", sessionID)
-		mgr.CloseRoom(sessionID)
+		room, err := mgr.GetRemoteRoomData(sessionID)
+
+		if room != nil && err == nil {
+			if room.Options.MaxAgeSeconds == -1 {
+				log.Infof("closing empty room %s with expiry=-1", sessionID)
+				mgr.CloseRoom(sessionID)
+			}
+		}
+
 		s.mu.Lock()
 		delete(s.sessions, sessionID)
 		s.mu.Unlock()
 	})
 
-	mgr.OpenRoom(sessionID, session)
 	s.sessions[sessionID] = session
 	return session
 }

@@ -43,7 +43,7 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 
 	router := (*s.manager).GetRouter()
 	routerQueue := (*router).GetQueue()
-	
+
 	toPeerQueue := s.manager.GetQueue(pb.KeyTopicToPeer(s.pid), noir.PeerPingFrequency)
 
 	log.Debugf("from jsonrpc %s %s", s.pid, req.Method)
@@ -74,7 +74,7 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 					},
 				},
 			}}
-		
+
 		noir.EnqueueRequest(*routerQueue, command)
 
 		go s.Listen(ctx, conn, req)
@@ -218,7 +218,7 @@ func (s *clientJSONRPCBridge) Listen(ctx context.Context, conn *jsonrpc2.Conn, r
 				var candidate webrtc.ICECandidateInit
 				json.Unmarshal([]byte(trickle.GetInit()), &candidate)
 				conn.Notify(ctx, "trickle", Trickle{
-					Target: int(trickle.Target.Number()),
+					Target:    int(trickle.Target.Number()),
 					Candidate: candidate,
 				})
 				//log.Debugf("trickle %s", trickle)

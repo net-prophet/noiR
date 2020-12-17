@@ -17,8 +17,7 @@ protos:
 		--go_opt=paths=source_relative \
 		--go-grpc_out=. \
 		--go-grpc_opt=paths=source_relative \
-		pkg/proto/noir.proto \
-		pkg/proto/objects.proto
+		pkg/proto/noir.proto
 
 clean:
 	rm -rf bin
@@ -47,7 +46,7 @@ tag:
 		  || echo "usage: make tag TAG=..."
 
 test_redis:
-	docker rm -f noir-redis ; docker run -d --rm -p 6379:6379 --name noir-redis sameersbn/redis
+	docker start noir-redis || docker run -d --rm -p 6379:6379 --name noir-redis sameersbn/redis
 
 demo:
 	echo "Starting local demonstration at http://localhost:7070" && docker run --net host ghcr.io/net-prophet/noir:latest -d :7070 -j :7000

@@ -144,7 +144,6 @@ func main() {
 		go signal.AdminGRPC(&SFU, grpcAddr)
 	}
 
-
 	if demoAddr != "" {
 
 		log.Infof("demo http server running at %s", demoAddr)

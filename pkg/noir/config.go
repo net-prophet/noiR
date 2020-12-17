@@ -7,5 +7,5 @@ import (
 
 type Config struct {
 	Ion sfu.Config
-	Log    log.Config   `mapstructure:"log"`
+	Log log.Config `mapstructure:"log"`
 }

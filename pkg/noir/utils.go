@@ -59,6 +59,8 @@ func ReadAction(request *pb.NoirRequest) (string, error) {
 	switch request.Command.(type) {
 	case *pb.NoirRequest_Signal:
 		return ReadSignalAction(request.GetSignal())
+	case *pb.NoirRequest_RoomAdmin:
+		return ReadRoomAdminAction(request.GetRoomAdmin())
 	}
 	return "", errors.New("unhandled action")
 }
@@ -72,6 +74,17 @@ func ReadSignalAction(signal *pb.SignalRequest) (string, error) {
 		return action + "description", nil
 	case *pb.SignalRequest_Trickle:
 		return action + "trickle", nil
+	}
+	return action, errors.New("unhandled action")
+}
+
+func ReadRoomAdminAction(signal *pb.RoomAdminRequest) (string, error) {
+	action := "request.roomadmin."
+	switch signal.Payload.(type) {
+	case *pb.RoomAdminRequest_OpenRoom:
+		return action + "openroom", nil
+	case *pb.RoomAdminRequest_PlayFile:
+		return action + "playfile", nil
 	}
 	return action, errors.New("unhandled action")
 }
@@ -152,7 +165,7 @@ func NewTestSetup() Manager {
 // listQueue is a queue for the tests!
 type listQueue struct {
 	messages [][]byte
-	topic string
+	topic    string
 }
 
 func (q *listQueue) Topic() string {
