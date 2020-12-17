@@ -3,6 +3,7 @@ GO_VERSION = 1.14
 GO_TESTPKGS:=$(shell go list ./... | grep -v cmd | grep -v examples)
 CI_REGISTRY_IMAGE = docker.netprophet.tech/netp/noir
 TEST_REDIS = :6379
+REDIS_CLI = docker run -ti --rm --net=host --name noir-redis-cli sameersbn/redis redis-cli
 
 all: docker demo
 
@@ -37,6 +38,7 @@ run_second:
 docker: protos
 	docker build . -t ${CI_REGISTRY_IMAGE}:latest
 
+
 tag:
 	test ! -z "$$TAG" && (echo "Tagging $$TAG" \
 							 && git tag $$TAG  \
@@ -46,8 +48,28 @@ tag:
 							 && docker push ${CI_REGISTRY_IMAGE}:latest ) \
 		  || echo "usage: make tag TAG=..."
 
-test_redis:
+test_redis: redis_reset
 	docker start noir-redis || docker run -d --rm -p 6379:6379 --name noir-redis sameersbn/redis
+
+redis_cli:
+	${REDIS_CLI}
+
+redis_reset:
+	${REDIS_CLI} flushdb
+
+redis_all_keys:
+	${REDIS_CLI} keys  "noir/*"
+
+redis_room_keys:
+	${REDIS_CLI} keys  "noir/obj/room/*"
+
+redis_nodes:
+	${REDIS_CLI} hkeys "noir/list/nodes"
+
+redis_user_keys:
+	${REDIS_CLI} keys  "noir/obj/user/*"
+
+redis_summary: redis_nodes redis_room_keys redis_user_keys
 
 demo:
 	echo "Starting local demonstration at http://localhost:7070" && docker run --net host ghcr.io/net-prophet/noir:latest -d :7070 -j :7000

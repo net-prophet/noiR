@@ -1,23 +1,27 @@
 package proto
 
-func KeyRoomToWorker(roomID string) string {
-	return "noir/list/worker.rooms/" + roomID
+func KeyNodeMap() string {
+	return "noir/map/nodes"
+}
+
+func KeyRoomToNode(roomID string) string {
+	return "noir/list/room2node/" + roomID
 }
 
 func KeyPeerToRoom(peerID string) string {
-	return "noir/list/room.peers/" + peerID
+	return "noir/list/peer2room/" + peerID
 }
 
 func KeyRoomData(roomID string) string {
 	return "noir/obj/room/" + roomID
 }
 
-func KeyWorkerData(workerID string) string {
-	return "noir/obj/worker/" + workerID
+func KeyWorkerData(nodeID string) string {
+	return "noir/obj/node/" + nodeID
 }
 
-func KeyWorkerTopic(workerID string) string {
-	return "noir/to/worker/" + workerID
+func KeyWorkerTopic(nodeID string) string {
+	return "noir/to/worker/" + nodeID
 }
 
 func KeyPeerData(peerID string) string {

@@ -13,9 +13,9 @@ func TestHealth_Checkin(t *testing.T) {
 		t.Errorf("error setting up mgr %s", err)
 	}
 
-	mgr.UpdateAvailableWorkers()
+	mgr.UpdateAvailableNodes()
 
-	count := mgr.WorkerCount()
+	count := mgr.NodeCount()
 	if count != 1 {
 		t.Errorf("expected 1 worker, got %d", count)
 	}

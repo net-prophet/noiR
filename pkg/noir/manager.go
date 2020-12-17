@@ -22,7 +22,6 @@ import (
 const (
 	ManagerPingFrequency = 10 * time.Second
 	PeerPingFrequency    = 25 * time.Second
-	WorkersKey           = "noir/list_workers"
 )
 
 type Manager struct {
@@ -130,7 +129,7 @@ func (m *Manager) GetQueue(topic string, maxAge time.Duration) Queue {
 }
 
 func (m *Manager) WorkerForRoom(roomID string) (string, error) {
-	workerID, err := m.redis.Get(pb.KeyRoomToWorker(roomID)).Result()
+	workerID, err := m.redis.Get(pb.KeyRoomToNode(roomID)).Result()
 	if err != nil {
 		workerID, err = m.FirstAvailableWorkerID("room.new")
 		if err != nil {
@@ -141,8 +140,8 @@ func (m *Manager) WorkerForRoom(roomID string) (string, error) {
 	return workerID, err
 }
 
-func (m *Manager) WorkerCount() int {
-	return int(m.redis.HLen(WorkersKey).Val())
+func (m *Manager) NodeCount() int {
+	return int(m.redis.HLen(pb.KeyNodeMap()).Val())
 }
 
 func (m *Manager) RoomCount() int {
@@ -179,7 +178,7 @@ func (m *Manager) Checkin() error {
 	if err != nil {
 		return err
 	}
-	err = m.redis.HSet(WorkersKey, id, value).Err()
+	err = m.redis.HSet(pb.KeyNodeMap(), id, value).Err()
 	if err != nil {
 		return err
 	}
@@ -200,7 +199,7 @@ func (m *Manager) SetRouter(r *Router) {
 }
 
 func (m *Manager) RandomWorkerId() (string, error) {
-	ids, err := m.redis.HKeys(WorkersKey).Result()
+	ids, err := m.redis.HKeys(pb.KeyNodeMap()).Result()
 	if err != nil || len(ids) == 0 {
 		return "", errors.New("no workers available")
 	}
@@ -236,10 +235,10 @@ func (m *Manager) FirstAvailableWorkerID(action string) (string, error) {
 	return m.RandomWorkerId()
 }
 
-func (m *Manager) UpdateAvailableWorkers() error {
+func (m *Manager) UpdateAvailableNodes() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	ids, err := m.redis.HKeys(WorkersKey).Result()
+	ids, err := m.redis.HKeys(pb.KeyNodeMap()).Result()
 	if err != nil {
 		log.Errorf("error getting workers from redis %s", err)
 		return err
@@ -248,7 +247,7 @@ func (m *Manager) UpdateAvailableWorkers() error {
 	m.statuses = make(map[string]pb.WorkerData)
 
 	for _, id := range ids {
-		status, err := m.redis.HGet(WorkersKey, id).Result()
+		status, err := m.redis.HGet(pb.KeyNodeMap(), id).Result()
 		if err != nil {
 			log.Errorf("error getting worker data %s", err)
 			return err
@@ -299,7 +298,7 @@ func (m *Manager) GetLocalRoom(roomID string) (*Room, error) {
 }
 
 func (m *Manager) GetRemoteRoomExists(roomID string) (bool, error) {
-	val, err := m.redis.Exists(pb.KeyRoomToWorker(roomID)).Result()
+	val, err := m.redis.Exists(pb.KeyRoomToNode(roomID)).Result()
 	return val == 0, err
 }
 
@@ -315,7 +314,7 @@ func (m *Manager) GetRemoteRoomData(roomID string) (*pb.RoomData, error) {
 }
 
 func (m *Manager) ClaimRoomNode(roomID string, nodeID string) (bool, error) {
-	return m.redis.SetNX(pb.KeyRoomToWorker(roomID), nodeID, 10*time.Second).Result()
+	return m.redis.SetNX(pb.KeyRoomToNode(roomID), nodeID, 10*time.Second).Result()
 }
 
 // Only on RedisManager
@@ -378,7 +377,7 @@ func (m *Manager) Noir() {
 	checkin := time.NewTicker(15 * time.Second)
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
-	m.UpdateAvailableWorkers()
+	m.UpdateAvailableNodes()
 
 	go m.worker.HandleForever()
 	go m.router.HandleForever()
@@ -388,9 +387,14 @@ func (m *Manager) Noir() {
 		case <-checkin.C:
 			m.Checkin()
 		case <-update.C:
-			m.UpdateAvailableWorkers()
+			m.UpdateAvailableNodes()
 		case <-info.C:
-			log.Debugf("%s: noirs=%d users=%d rooms=%d", m.worker.ID(), len(m.statuses), len(m.clients), m.RoomCount())
+			log.Infof("%s: noirs=%d rooms=%d users=%d",
+				m.worker.ID(),
+				len(m.statuses),
+				m.RoomCount(),
+				len(m.clients),
+			)
 		case <-quit:
 			log.Warnf("quit requested, cleaning up...")
 			info.Stop()
@@ -404,7 +408,7 @@ func (m *Manager) Noir() {
 }
 
 func (m *Manager) MarkOffline(workerID string) {
-	m.redis.HDel(WorkersKey, workerID)
+	m.redis.HDel(pb.KeyNodeMap(), workerID)
 }
 
 func (m *Manager) OpenRoomFromRequest(admin *pb.RoomAdminRequest) error {
@@ -433,8 +437,6 @@ func (m *Manager) CreateRoomIfNotExists(roomID string) (*pb.RoomData, error) {
 
 	if exists == 1 {
 		data, err := m.GetRemoteRoomData(roomID)
-		log.Infof("looked up room %s, expires at %s", roomID, GetEndTime(data))
-		log.Infof("looked up room %s, cleanup at %s", roomID, GetCleanupTime(data))
 		if err == nil {
 			return data, nil // Room exists
 		}
