@@ -17,6 +17,7 @@ protos:
 		--go_opt=paths=source_relative \
 		--go-grpc_out=. \
 		--go-grpc_opt=paths=source_relative \
+		--python_out=. \
 		pkg/proto/noir.proto
 
 clean:

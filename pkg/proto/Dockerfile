@@ -15,5 +15,7 @@ COPY --from=builder /go/bin/protoc-gen-go /usr/bin/
 
 WORKDIR /workspace
 
+RUN mkdir /workspace/python
+
 CMD ["protoc"]
 
