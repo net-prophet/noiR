@@ -225,6 +225,10 @@ func (w *worker) PeerChannel(pid string, peer *sfu.Peer) {
 		case *pb.NoirRequest_Signal:
 			signal := request.GetSignal()
 			switch signal.Payload.(type) {
+			case *pb.SignalRequest_Kill:
+				log.Infof("got KillRequest for peer %s", pid)
+				w.manager.CloseClient(pid)
+				return
 			case *pb.SignalRequest_Description:
 				var desc pb.Negotiation
 				err := json.Unmarshal(signal.GetDescription(), &desc)

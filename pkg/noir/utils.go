@@ -74,6 +74,8 @@ func ReadSignalAction(signal *pb.SignalRequest) (string, error) {
 		return action + "description", nil
 	case *pb.SignalRequest_Trickle:
 		return action + "trickle", nil
+	case *pb.SignalRequest_Kill:
+		return action + "kill", nil
 	}
 	return action, errors.New("unhandled action")
 }

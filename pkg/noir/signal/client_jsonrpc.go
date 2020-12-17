@@ -160,7 +160,31 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 }
 
 func (s *clientJSONRPCBridge) Close() {
-	s.manager.CloseClient(s.pid)
+	toPeerQueue := s.manager.GetQueue(pb.KeyTopicToPeer(s.pid), noir.PeerPingFrequency)
+	fromPeerQueue := s.manager.GetQueue(pb.KeyTopicFromPeer(s.pid), noir.PeerPingFrequency)
+	noir.EnqueueRequest(toPeerQueue, &pb.NoirRequest{
+		Command: &pb.NoirRequest_Signal{
+			Signal: &pb.SignalRequest{
+				// SignalRequest.id should be called pid but we are ion-sfu compatible
+				Id: s.pid,
+				Payload: &pb.SignalRequest_Kill{
+					Kill: true,
+				},
+			},
+		},
+	})
+
+	noir.EnqueueReply(fromPeerQueue, &pb.NoirReply{
+		Command: &pb.NoirReply_Signal{
+			Signal: &pb.SignalReply{
+				// SignalRequest.id should be called pid but we are ion-sfu compatible
+				Id: s.pid,
+				Payload: &pb.SignalReply_Kill{
+					Kill: true,
+				},
+			},
+		},
+	})
 }
 
 func (s *clientJSONRPCBridge) Listen(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
@@ -192,6 +216,8 @@ func (s *clientJSONRPCBridge) Listen(ctx context.Context, conn *jsonrpc2.Conn, r
 			signal := reply.GetSignal()
 			reqID := jsonrpc2.ID{Num: 0, Str: signal.RequestId, IsString: true}
 			switch signal.Payload.(type) {
+			case *pb.SignalReply_Kill:
+				return
 			case *pb.SignalReply_Join:
 				var answer webrtc.SessionDescription
 				json.Unmarshal(signal.GetJoin().Description, &answer)
