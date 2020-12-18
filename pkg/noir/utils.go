@@ -161,7 +161,7 @@ func NewTestSetup() Manager {
 	})
 	config := Config{}
 	sfu := NewNoirSFU(config)
-	return NewManager(&sfu, rdb, "test-worker")
+	return SetupNoir(&sfu, rdb, "test-worker")
 }
 
 // listQueue is a queue for the tests!

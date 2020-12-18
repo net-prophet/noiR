@@ -62,19 +62,47 @@ func (r *router) NextCommand() (*pb.NoirRequest, error) {
 	return &request, nil
 }
 
+func (r *router) TargetForSignal(action string, signal *pb.SignalRequest) (string, error) {
+	// Signal messages get routed to the worker handling the Room
+	room, _ := r.mgr.LookupSignalRoomID(signal)
+
+	roomExists, _ := r.mgr.GetRemoteRoomExists(room)
+
+	if roomExists == false {
+		// Assign the first peer queue a Room to a new worker based on capacity
+		log.Infof("no such room, routing to random worker")
+		return r.mgr.FirstAvailableWorkerID(action)
+	} else {
+		roomData, err := r.mgr.GetRemoteRoomData(room)
+		if err != nil {
+			log.Errorf("error getting room data: %s", err)
+			return "", err
+		}
+		if _, ok := r.mgr.workers[roomData.WorkerID]; ok {
+			return roomData.WorkerID, nil
+		} else {
+			log.Infof("room %s was assigned to %s which is offline, reassigning...", room, roomData.WorkerID)
+			target, err := r.mgr.FirstAvailableWorkerID(action)
+			if err != nil {
+				log.Warnf("")
+				return "", err
+			}
+			roomData.WorkerID = target
+			r.mgr.SaveData(pb.KeyRoomData(room), &pb.NoirObject{
+				Data: &pb.NoirObject_Room{
+					Room: roomData,
+				},
+			}, 0)
+			return target, nil
+		}
+	}
+}
+
 func (r *router) Handle(request *pb.NoirRequest) error {
 	var routeErr error
 	target := ""
 	if strings.HasPrefix(request.Action[:15], "request.signal.") {
-		// Signal messages get routed to the worker handling the Room
-		room, _ := r.mgr.LookupSignalRoomID(request.GetSignal())
-
-		target, routeErr = r.mgr.WorkerForRoom(room)
-		if target == "" && routeErr == nil {
-			// Assign the first peer queue a Room to a new worker based on capacity
-			target, routeErr = r.mgr.FirstAvailableWorkerID(request.Action)
-			r.mgr.ClaimRoomNode(room, target)
-		}
+		target, routeErr = r.TargetForSignal(request.Action, request.GetSignal())
 	} else {
 		// Assign each action to a new worker based on capacity
 		target, routeErr = r.mgr.FirstAvailableWorkerID(request.Action)

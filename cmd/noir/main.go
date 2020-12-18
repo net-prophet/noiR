@@ -129,7 +129,7 @@ func main() {
 	}
 	sfu := noir.NewNoirSFU(conf)
 
-	mgr := noir.NewManager(&sfu, rdb, id)
+	mgr := noir.SetupNoir(&sfu, rdb, id)
 
 	go mgr.Noir()
 	defer mgr.Cleanup()

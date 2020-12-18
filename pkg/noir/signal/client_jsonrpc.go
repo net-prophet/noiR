@@ -44,7 +44,7 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 	router := (*s.manager).GetRouter()
 	routerQueue := (*router).GetQueue()
 
-	toPeerQueue := s.manager.GetQueue(pb.KeyTopicToPeer(s.pid), noir.PeerPingFrequency)
+	toPeerQueue := s.manager.GetQueue(pb.KeyTopicToPeer(s.pid))
 
 	log.Debugf("from jsonrpc %s %s", s.pid, req.Method)
 
@@ -160,8 +160,8 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 }
 
 func (s *clientJSONRPCBridge) Close() {
-	toPeerQueue := s.manager.GetQueue(pb.KeyTopicToPeer(s.pid), noir.PeerPingFrequency)
-	fromPeerQueue := s.manager.GetQueue(pb.KeyTopicFromPeer(s.pid), noir.PeerPingFrequency)
+	toPeerQueue := s.manager.GetQueue(pb.KeyTopicToPeer(s.pid))
+	fromPeerQueue := s.manager.GetQueue(pb.KeyTopicFromPeer(s.pid))
 	noir.EnqueueRequest(toPeerQueue, &pb.NoirRequest{
 		Command: &pb.NoirRequest_Signal{
 			Signal: &pb.SignalRequest{
@@ -189,7 +189,7 @@ func (s *clientJSONRPCBridge) Close() {
 
 func (s *clientJSONRPCBridge) Listen(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
 	//send := s.manager.GetQueue(pb.KeyTopicToPeer(s.pid), noir.PeerPingFrequency)
-	recv := s.manager.GetQueue(pb.KeyTopicFromPeer(s.pid), noir.PeerPingFrequency)
+	recv := s.manager.GetQueue(pb.KeyTopicFromPeer(s.pid))
 
 	log.Infof("peer bridge %s", s.pid)
 

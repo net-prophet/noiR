@@ -58,7 +58,7 @@ func TestHealth_AvailableWorkers(t *testing.T) {
 	}
 
 	if id != "test-worker" {
-		t.Errorf("unexpected worker clientID %s expected 'test-worker'", id)
+		t.Errorf("unexpected worker userID %s expected 'test-worker'", id)
 	}
 
 	err = router.Handle(next)

@@ -24,7 +24,7 @@ Create a room by specifying mandatory CLOSE_AFTER and EXPIRY_FACTOR>=0
 if CLOSE_AFTER is 2h and EXPIRY_FACTOR is 2 (default), the room "123" will be open for 2h,
 and nobody will be able to join the room for 4h after closure (6h total elapsed)
 
-Setting EXPIRY_FACTOR to 0 is not recommended because when you close a room, clients might try to immediately
+Setting EXPIRY_FACTOR to 0 is not recommended because when you close a room, users might try to immediately
 reconnect, creating an empty ion session with insecure access parameters;
 a room with many subscribers that had a password would suddenly be open for anyone to publish, etc
 */

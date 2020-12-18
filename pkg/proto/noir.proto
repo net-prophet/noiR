@@ -137,7 +137,7 @@ message NoirObject {
     oneof data {
         WorkerData worker = 1;
         RoomData room = 2;
-        PeerData peer = 3;
+        UserData user = 3;
     }
 }
 
@@ -161,10 +161,16 @@ message RoomOptions {
     string publishPassword = 5;
     int32 maxPublishers = 6;
     int32 maxPeers = 7;
+    int32 debug = 8;
 }
 
-message PeerData {
+message UserData {
     string id = 1;
     google.protobuf.Timestamp lastUpdate = 2;
     string roomID = 3;
+    UserOptions options = 4;
+}
+message UserOptions {
+    string title = 1;
+    int32 debug = 2;
 }

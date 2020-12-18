@@ -27,13 +27,13 @@ clean:
 build: go_init protos
 	go build -o bin/noir $(GO_LDFLAGS) ./cmd/noir/main.go
 
-run: test_redis
+run: redis
 	echo "Running local demo: http://localhost:7070"
 	go run ./cmd/noir/main.go -c ./config.toml -d :7070 -j :7000
 
 run_second:
 	echo "Running second demo: http://localhost:7071"
-	go run ./cmd/noir/main.go -c ./config.toml -d :7071 -j :7001
+	go run ./cmd/noir/main.go -c ./config.toml -d :7069 -j :6999
 
 docker: protos
 	docker build . -t ${CI_REGISTRY_IMAGE}:latest
@@ -48,7 +48,7 @@ tag:
 							 && docker push ${CI_REGISTRY_IMAGE}:latest ) \
 		  || echo "usage: make tag TAG=..."
 
-test_redis: redis_reset
+redis:
 	docker start noir-redis || docker run -d --rm -p 6379:6379 --name noir-redis sameersbn/redis
 
 redis_cli:
@@ -74,7 +74,7 @@ redis_summary: redis_nodes redis_room_keys redis_user_keys
 demo:
 	echo "Starting local demonstration at http://localhost:7070" && docker run --net host ghcr.io/net-prophet/noir:latest -d :7070 -j :7000
 
-test: go_init test_redis
+test: go_init redis_reset redis
 	TEST_REDIS=${TEST_REDIS} go test \
 		-timeout 120s \
 		-coverprofile=cover.out -covermode=atomic \

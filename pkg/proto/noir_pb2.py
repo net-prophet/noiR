@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=b'Z%github.com/net-prophet/noir/pkg/proto',
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x14pkg/proto/noir.proto\x12\x04noir\x1a\x1fgoogle/protobuf/timestamp.proto\"\x94\x01\n\x0bNoirRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\n\n\x02\x61t\x18\x02 \x01(\t\x12\x0e\n\x06\x61\x63tion\x18\x03 \x01(\t\x12%\n\x06signal\x18\x04 \x01(\x0b\x32\x13.noir.SignalRequestH\x00\x12+\n\troomAdmin\x18\x05 \x01(\x0b\x32\x16.noir.RoomAdminRequestH\x00\x42\t\n\x07\x63ommand\"\x8f\x01\n\tNoirReply\x12\n\n\x02id\x18\x01 \x01(\t\x12\n\n\x02\x61t\x18\x02 \x01(\t\x12#\n\x06signal\x18\x03 \x01(\x0b\x32\x11.noir.SignalReplyH\x00\x12)\n\troomAdmin\x18\x04 \x01(\x0b\x32\x14.noir.RoomAdminReplyH\x00\x12\x0f\n\x05\x65rror\x18\x05 \x01(\tH\x00\x42\t\n\x07\x63ommand\"\x84\x01\n\x10RoomAdminRequest\x12\x0e\n\x06roomID\x18\x01 \x01(\t\x12)\n\x08openRoom\x18\x02 \x01(\x0b\x32\x15.noir.OpenRoomRequestH\x00\x12*\n\tplay_file\x18\x03 \x01(\x0b\x32\x15.noir.PlayFileRequestH\x00\x42\t\n\x07payload\"<\n\x0eRoomAdminReply\x12\x0e\n\x06roomID\x18\x01 \x01(\t\x12\x0f\n\x05\x65rror\x18\x02 \x01(\tH\x00\x42\t\n\x07payload\"5\n\x0fOpenRoomRequest\x12\"\n\x07options\x18\x01 \x01(\x0b\x32\x11.noir.RoomOptions\"@\n\x0fPlayFileRequest\x12\x0b\n\x03pid\x18\x01 \x01(\t\x12\x10\n\x08\x66ilename\x18\x02 \x01(\t\x12\x0e\n\x06repeat\x18\x03 \x01(\x08\"N\n\rPlayFileReply\x12\x0b\n\x03pid\x18\x01 \x01(\t\x12\x10\n\x08\x66ilename\x18\x02 \x01(\t\x12\x0e\n\x06repeat\x18\x03 \x01(\x08\x12\x0e\n\x06status\x18\x04 \x01(\x08\"\xa5\x01\n\rSignalRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12!\n\x04join\x18\x02 \x01(\x0b\x32\x11.noir.JoinRequestH\x00\x12\x15\n\x0b\x64\x65scription\x18\x03 \x01(\x0cH\x00\x12 \n\x07trickle\x18\x04 \x01(\x0b\x32\r.noir.TrickleH\x00\x12\x0e\n\x04kill\x18\x05 \x01(\x08H\x00\x12\x11\n\trequestId\x18\x06 \x01(\tB\t\n\x07payload\"\xd0\x01\n\x0bSignalReply\x12\n\n\x02id\x18\x01 \x01(\t\x12\x1f\n\x04join\x18\x02 \x01(\x0b\x32\x0f.noir.JoinReplyH\x00\x12\x15\n\x0b\x64\x65scription\x18\x03 \x01(\x0cH\x00\x12 \n\x07trickle\x18\x04 \x01(\x0b\x32\r.noir.TrickleH\x00\x12\x1c\n\x12iceConnectionState\x18\x05 \x01(\tH\x00\x12\x0f\n\x05\x65rror\x18\x06 \x01(\tH\x00\x12\x0e\n\x04kill\x18\x07 \x01(\x08H\x00\x12\x11\n\trequestId\x18\x08 \x01(\tB\t\n\x07payload\"/\n\x0bJoinRequest\x12\x0b\n\x03sid\x18\x01 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x02 \x01(\x0c\" \n\tJoinReply\x12\x13\n\x0b\x64\x65scription\x18\x01 \x01(\x0c\"f\n\x07Trickle\x12$\n\x06target\x18\x01 \x01(\x0e\x32\x14.noir.Trickle.Target\x12\x0c\n\x04init\x18\x02 \x01(\t\"\'\n\x06Target\x12\r\n\tPUBLISHER\x10\x00\x12\x0e\n\nSUBSCRIBER\x10\x01\"x\n\nNoirObject\x12\"\n\x06worker\x18\x01 \x01(\x0b\x32\x10.noir.WorkerDataH\x00\x12\x1e\n\x04room\x18\x02 \x01(\x0b\x32\x0e.noir.RoomDataH\x00\x12\x1e\n\x04peer\x18\x03 \x01(\x0b\x32\x0e.noir.PeerDataH\x00\x42\x06\n\x04\x64\x61ta\"H\n\nWorkerData\x12\n\n\x02id\x18\x01 \x01(\t\x12.\n\nlastUpdate\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\xa9\x01\n\x08RoomData\x12\n\n\x02id\x18\x01 \x01(\t\x12+\n\x07\x63reated\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12.\n\nlastUpdate\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x10\n\x08workerID\x18\x04 \x01(\t\x12\"\n\x07options\x18\x05 \x01(\x0b\x32\x11.noir.RoomOptions\"\xa4\x01\n\x0bRoomOptions\x12\r\n\x05title\x18\x01 \x01(\t\x12\x15\n\rmaxAgeSeconds\x18\x02 \x01(\x05\x12\x17\n\x0fkeyExpiryFactor\x18\x03 \x01(\x05\x12\x14\n\x0cjoinPassword\x18\x04 \x01(\t\x12\x17\n\x0fpublishPassword\x18\x05 \x01(\t\x12\x15\n\rmaxPublishers\x18\x06 \x01(\x05\x12\x10\n\x08maxPeers\x18\x07 \x01(\x05\"V\n\x08PeerData\x12\n\n\x02id\x18\x01 \x01(\t\x12.\n\nlastUpdate\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0e\n\x06roomID\x18\x03 \x01(\t2<\n\x07NoirSFU\x12\x31\n\x05\x41\x64min\x12\x11.noir.NoirRequest\x1a\x0f.noir.NoirReply\"\x00(\x01\x30\x01\x42\'Z%github.com/net-prophet/noir/pkg/protob\x06proto3'
+  serialized_pb=b'\n\x14pkg/proto/noir.proto\x12\x04noir\x1a\x1fgoogle/protobuf/timestamp.proto\"\x94\x01\n\x0bNoirRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\n\n\x02\x61t\x18\x02 \x01(\t\x12\x0e\n\x06\x61\x63tion\x18\x03 \x01(\t\x12%\n\x06signal\x18\x04 \x01(\x0b\x32\x13.noir.SignalRequestH\x00\x12+\n\troomAdmin\x18\x05 \x01(\x0b\x32\x16.noir.RoomAdminRequestH\x00\x42\t\n\x07\x63ommand\"\x8f\x01\n\tNoirReply\x12\n\n\x02id\x18\x01 \x01(\t\x12\n\n\x02\x61t\x18\x02 \x01(\t\x12#\n\x06signal\x18\x03 \x01(\x0b\x32\x11.noir.SignalReplyH\x00\x12)\n\troomAdmin\x18\x04 \x01(\x0b\x32\x14.noir.RoomAdminReplyH\x00\x12\x0f\n\x05\x65rror\x18\x05 \x01(\tH\x00\x42\t\n\x07\x63ommand\"\x84\x01\n\x10RoomAdminRequest\x12\x0e\n\x06roomID\x18\x01 \x01(\t\x12)\n\x08openRoom\x18\x02 \x01(\x0b\x32\x15.noir.OpenRoomRequestH\x00\x12*\n\tplay_file\x18\x03 \x01(\x0b\x32\x15.noir.PlayFileRequestH\x00\x42\t\n\x07payload\"<\n\x0eRoomAdminReply\x12\x0e\n\x06roomID\x18\x01 \x01(\t\x12\x0f\n\x05\x65rror\x18\x02 \x01(\tH\x00\x42\t\n\x07payload\"5\n\x0fOpenRoomRequest\x12\"\n\x07options\x18\x01 \x01(\x0b\x32\x11.noir.RoomOptions\"@\n\x0fPlayFileRequest\x12\x0b\n\x03pid\x18\x01 \x01(\t\x12\x10\n\x08\x66ilename\x18\x02 \x01(\t\x12\x0e\n\x06repeat\x18\x03 \x01(\x08\"N\n\rPlayFileReply\x12\x0b\n\x03pid\x18\x01 \x01(\t\x12\x10\n\x08\x66ilename\x18\x02 \x01(\t\x12\x0e\n\x06repeat\x18\x03 \x01(\x08\x12\x0e\n\x06status\x18\x04 \x01(\x08\"\xa5\x01\n\rSignalRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12!\n\x04join\x18\x02 \x01(\x0b\x32\x11.noir.JoinRequestH\x00\x12\x15\n\x0b\x64\x65scription\x18\x03 \x01(\x0cH\x00\x12 \n\x07trickle\x18\x04 \x01(\x0b\x32\r.noir.TrickleH\x00\x12\x0e\n\x04kill\x18\x05 \x01(\x08H\x00\x12\x11\n\trequestId\x18\x06 \x01(\tB\t\n\x07payload\"\xd0\x01\n\x0bSignalReply\x12\n\n\x02id\x18\x01 \x01(\t\x12\x1f\n\x04join\x18\x02 \x01(\x0b\x32\x0f.noir.JoinReplyH\x00\x12\x15\n\x0b\x64\x65scription\x18\x03 \x01(\x0cH\x00\x12 \n\x07trickle\x18\x04 \x01(\x0b\x32\r.noir.TrickleH\x00\x12\x1c\n\x12iceConnectionState\x18\x05 \x01(\tH\x00\x12\x0f\n\x05\x65rror\x18\x06 \x01(\tH\x00\x12\x0e\n\x04kill\x18\x07 \x01(\x08H\x00\x12\x11\n\trequestId\x18\x08 \x01(\tB\t\n\x07payload\"/\n\x0bJoinRequest\x12\x0b\n\x03sid\x18\x01 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x02 \x01(\x0c\" \n\tJoinReply\x12\x13\n\x0b\x64\x65scription\x18\x01 \x01(\x0c\"f\n\x07Trickle\x12$\n\x06target\x18\x01 \x01(\x0e\x32\x14.noir.Trickle.Target\x12\x0c\n\x04init\x18\x02 \x01(\t\"\'\n\x06Target\x12\r\n\tPUBLISHER\x10\x00\x12\x0e\n\nSUBSCRIBER\x10\x01\"x\n\nNoirObject\x12\"\n\x06worker\x18\x01 \x01(\x0b\x32\x10.noir.WorkerDataH\x00\x12\x1e\n\x04room\x18\x02 \x01(\x0b\x32\x0e.noir.RoomDataH\x00\x12\x1e\n\x04user\x18\x03 \x01(\x0b\x32\x0e.noir.UserDataH\x00\x42\x06\n\x04\x64\x61ta\"H\n\nWorkerData\x12\n\n\x02id\x18\x01 \x01(\t\x12.\n\nlastUpdate\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\xa9\x01\n\x08RoomData\x12\n\n\x02id\x18\x01 \x01(\t\x12+\n\x07\x63reated\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12.\n\nlastUpdate\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x10\n\x08workerID\x18\x04 \x01(\t\x12\"\n\x07options\x18\x05 \x01(\x0b\x32\x11.noir.RoomOptions\"\xb3\x01\n\x0bRoomOptions\x12\r\n\x05title\x18\x01 \x01(\t\x12\x15\n\rmaxAgeSeconds\x18\x02 \x01(\x05\x12\x17\n\x0fkeyExpiryFactor\x18\x03 \x01(\x05\x12\x14\n\x0cjoinPassword\x18\x04 \x01(\t\x12\x17\n\x0fpublishPassword\x18\x05 \x01(\t\x12\x15\n\rmaxPublishers\x18\x06 \x01(\x05\x12\x10\n\x08maxPeers\x18\x07 \x01(\x05\x12\r\n\x05\x64\x65\x62ug\x18\x08 \x01(\x05\"z\n\x08UserData\x12\n\n\x02id\x18\x01 \x01(\t\x12.\n\nlastUpdate\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0e\n\x06roomID\x18\x03 \x01(\t\x12\"\n\x07options\x18\x04 \x01(\x0b\x32\x11.noir.UserOptions\"+\n\x0bUserOptions\x12\r\n\x05title\x18\x01 \x01(\t\x12\r\n\x05\x64\x65\x62ug\x18\x02 \x01(\x05\x32<\n\x07NoirSFU\x12\x31\n\x05\x41\x64min\x12\x11.noir.NoirRequest\x1a\x0f.noir.NoirReply\"\x00(\x01\x30\x01\x42\'Z%github.com/net-prophet/noir/pkg/protob\x06proto3'
   ,
   dependencies=[google_dot_protobuf_dot_timestamp__pb2.DESCRIPTOR,])
 
@@ -700,7 +700,7 @@ _NOIROBJECT = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='peer', full_name='noir.NoirObject.peer', index=2,
+      name='user', full_name='noir.NoirObject.user', index=2,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -884,6 +884,13 @@ _ROOMOPTIONS = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='debug', full_name='noir.RoomOptions.debug', index=7,
+      number=8, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -897,36 +904,43 @@ _ROOMOPTIONS = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=1693,
-  serialized_end=1857,
+  serialized_end=1872,
 )
 
 
-_PEERDATA = _descriptor.Descriptor(
-  name='PeerData',
-  full_name='noir.PeerData',
+_USERDATA = _descriptor.Descriptor(
+  name='UserData',
+  full_name='noir.UserData',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   create_key=_descriptor._internal_create_key,
   fields=[
     _descriptor.FieldDescriptor(
-      name='id', full_name='noir.PeerData.id', index=0,
+      name='id', full_name='noir.UserData.id', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='lastUpdate', full_name='noir.PeerData.lastUpdate', index=1,
+      name='lastUpdate', full_name='noir.UserData.lastUpdate', index=1,
       number=2, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='roomID', full_name='noir.PeerData.roomID', index=2,
+      name='roomID', full_name='noir.UserData.roomID', index=2,
       number=3, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='options', full_name='noir.UserData.options', index=3,
+      number=4, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
@@ -942,8 +956,47 @@ _PEERDATA = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1859,
-  serialized_end=1945,
+  serialized_start=1874,
+  serialized_end=1996,
+)
+
+
+_USEROPTIONS = _descriptor.Descriptor(
+  name='UserOptions',
+  full_name='noir.UserOptions',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='title', full_name='noir.UserOptions.title', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='debug', full_name='noir.UserOptions.debug', index=1,
+      number=2, type=5, cpp_type=1, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1998,
+  serialized_end=2041,
 )
 
 _NOIRREQUEST.fields_by_name['signal'].message_type = _SIGNALREQUEST
@@ -1015,7 +1068,7 @@ _TRICKLE.fields_by_name['target'].enum_type = _TRICKLE_TARGET
 _TRICKLE_TARGET.containing_type = _TRICKLE
 _NOIROBJECT.fields_by_name['worker'].message_type = _WORKERDATA
 _NOIROBJECT.fields_by_name['room'].message_type = _ROOMDATA
-_NOIROBJECT.fields_by_name['peer'].message_type = _PEERDATA
+_NOIROBJECT.fields_by_name['user'].message_type = _USERDATA
 _NOIROBJECT.oneofs_by_name['data'].fields.append(
   _NOIROBJECT.fields_by_name['worker'])
 _NOIROBJECT.fields_by_name['worker'].containing_oneof = _NOIROBJECT.oneofs_by_name['data']
@@ -1023,13 +1076,14 @@ _NOIROBJECT.oneofs_by_name['data'].fields.append(
   _NOIROBJECT.fields_by_name['room'])
 _NOIROBJECT.fields_by_name['room'].containing_oneof = _NOIROBJECT.oneofs_by_name['data']
 _NOIROBJECT.oneofs_by_name['data'].fields.append(
-  _NOIROBJECT.fields_by_name['peer'])
-_NOIROBJECT.fields_by_name['peer'].containing_oneof = _NOIROBJECT.oneofs_by_name['data']
+  _NOIROBJECT.fields_by_name['user'])
+_NOIROBJECT.fields_by_name['user'].containing_oneof = _NOIROBJECT.oneofs_by_name['data']
 _WORKERDATA.fields_by_name['lastUpdate'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
 _ROOMDATA.fields_by_name['created'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
 _ROOMDATA.fields_by_name['lastUpdate'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
 _ROOMDATA.fields_by_name['options'].message_type = _ROOMOPTIONS
-_PEERDATA.fields_by_name['lastUpdate'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
+_USERDATA.fields_by_name['lastUpdate'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
+_USERDATA.fields_by_name['options'].message_type = _USEROPTIONS
 DESCRIPTOR.message_types_by_name['NoirRequest'] = _NOIRREQUEST
 DESCRIPTOR.message_types_by_name['NoirReply'] = _NOIRREPLY
 DESCRIPTOR.message_types_by_name['RoomAdminRequest'] = _ROOMADMINREQUEST
@@ -1046,7 +1100,8 @@ DESCRIPTOR.message_types_by_name['NoirObject'] = _NOIROBJECT
 DESCRIPTOR.message_types_by_name['WorkerData'] = _WORKERDATA
 DESCRIPTOR.message_types_by_name['RoomData'] = _ROOMDATA
 DESCRIPTOR.message_types_by_name['RoomOptions'] = _ROOMOPTIONS
-DESCRIPTOR.message_types_by_name['PeerData'] = _PEERDATA
+DESCRIPTOR.message_types_by_name['UserData'] = _USERDATA
+DESCRIPTOR.message_types_by_name['UserOptions'] = _USEROPTIONS
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 NoirRequest = _reflection.GeneratedProtocolMessageType('NoirRequest', (_message.Message,), {
@@ -1161,12 +1216,19 @@ RoomOptions = _reflection.GeneratedProtocolMessageType('RoomOptions', (_message.
   })
 _sym_db.RegisterMessage(RoomOptions)
 
-PeerData = _reflection.GeneratedProtocolMessageType('PeerData', (_message.Message,), {
-  'DESCRIPTOR' : _PEERDATA,
+UserData = _reflection.GeneratedProtocolMessageType('UserData', (_message.Message,), {
+  'DESCRIPTOR' : _USERDATA,
   '__module__' : 'pkg.proto.noir_pb2'
-  # @@protoc_insertion_point(class_scope:noir.PeerData)
+  # @@protoc_insertion_point(class_scope:noir.UserData)
   })
-_sym_db.RegisterMessage(PeerData)
+_sym_db.RegisterMessage(UserData)
+
+UserOptions = _reflection.GeneratedProtocolMessageType('UserOptions', (_message.Message,), {
+  'DESCRIPTOR' : _USEROPTIONS,
+  '__module__' : 'pkg.proto.noir_pb2'
+  # @@protoc_insertion_point(class_scope:noir.UserOptions)
+  })
+_sym_db.RegisterMessage(UserOptions)
 
 
 DESCRIPTOR._options = None
@@ -1178,8 +1240,8 @@ _NOIRSFU = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=1947,
-  serialized_end=2007,
+  serialized_start=2043,
+  serialized_end=2103,
   methods=[
   _descriptor.MethodDescriptor(
     name='Admin',

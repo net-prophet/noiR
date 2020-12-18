@@ -21,24 +21,25 @@ import (
 
 const (
 	ManagerPingFrequency = 10 * time.Second
-	PeerPingFrequency    = 25 * time.Second
+	//PeerPingFrequency    = 25 * time.Second
+	QueueMessageTimeout = 25 * time.Second
 )
 
 type Manager struct {
-	id       string
-	redis    *redis.Client
-	updated  time.Time
-	router   Router
-	worker   Worker
-	config   sfu.Config
-	sfu      *NoirSFU
-	statuses map[string]pb.WorkerData
-	clients  map[string]*sfu.Peer
-	rooms    map[string]Room
-	mu       sync.RWMutex
+	id      string
+	redis   *redis.Client
+	updated time.Time
+	router  Router
+	worker  Worker
+	config  sfu.Config
+	sfu     *NoirSFU
+	workers map[string]pb.WorkerData
+	users   map[string]*sfu.Peer
+	rooms   map[string]Room
+	mu      sync.RWMutex
 }
 
-func NewManager(sfu *NoirSFU, client *redis.Client, nodeID string) Manager {
+func SetupNoir(sfu *NoirSFU, client *redis.Client, nodeID string) Manager {
 	routerQueue := NewRedisQueue(client, RouterTopic, RouterMaxAge)
 	workerQueue := NewRedisQueue(client, pb.KeyWorkerTopic(nodeID), RouterMaxAge)
 	workerQueue.Cleanup()
@@ -49,6 +50,74 @@ func NewManager(sfu *NoirSFU, client *redis.Client, nodeID string) Manager {
 	manager.SetRouter(&router)
 	manager.Checkin()
 	return manager
+}
+
+
+func NewRedisManager(provider *NoirSFU, client *redis.Client, nodeID string) Manager {
+	manager := Manager{redis: client,
+		workers: make(map[string]pb.WorkerData),
+		users:   make(map[string]*sfu.Peer),
+		rooms:   make(map[string]Room),
+		sfu:     provider,
+		id:      nodeID,
+	}
+	(*provider).AttachManager(&manager)
+	return manager
+}
+
+// The Noir thread launches the worker and router, and then
+// handles ticker tasks (update cluster health, print status)
+// and watches for the quit signal to cleanup
+func (m *Manager) Noir() {
+	if m.worker == nil || m.router == nil {
+		panic("Manager not initialized")
+	}
+	info := time.NewTicker(5 * time.Second)
+	updateNodes := time.NewTicker(20 * time.Second)
+	checkin := time.NewTicker(15 * time.Second)
+	quit := make(chan os.Signal)
+	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
+	if err := m.Checkin() ; err != nil {
+		panic("unable to checkin node as healthy")
+	}
+
+	if err := m.UpdateAvailableNodes() ; err != nil {
+		panic("unable to retrieve cluster status")
+	}
+
+	go m.worker.HandleForever()
+	go m.router.HandleForever()
+
+	for {
+		select {
+		case <-checkin.C:
+			if err := m.Checkin() ; err != nil {
+				panic("unable to checkin node as healthy")
+			}
+		case <-updateNodes.C:
+			if err := m.UpdateAvailableNodes() ; err != nil {
+				panic("unable to retrieve cluster status")
+			}
+			if len(m.workers) == 0 {
+				panic("no node data found in redis (not even my own!)")
+			}
+		case <-info.C:
+			log.Infof("%s: noirs=%d rooms=%d users=%d",
+				m.worker.ID(),
+				len(m.workers),
+				m.RoomCount(),
+				len(m.users),
+			)
+		case <-quit:
+			log.Warnf("quit requested, cleaning up...")
+			info.Stop()
+			updateNodes.Stop()
+			m.Cleanup()
+			log.Debugf("cleaned up ok!")
+			os.Exit(1)
+			return
+		}
+	}
 }
 
 func (m *Manager) BindRoomSession(room Room, session *sfu.Session) *Room {
@@ -66,7 +135,7 @@ func (m *Manager) CloseRoom(roomID string) {
 }
 
 func (m *Manager) CloseClient(clientID string) {
-	client := m.clients[clientID]
+	client := m.users[clientID]
 	defer m.redis.Del(pb.KeyPeerToRoom(clientID))
 
 	if client != nil {
@@ -74,7 +143,7 @@ func (m *Manager) CloseClient(clientID string) {
 	}
 
 	m.mu.Lock()
-	delete(m.clients, clientID)
+	delete(m.users, clientID)
 	m.mu.Unlock()
 }
 
@@ -109,34 +178,20 @@ func (m *Manager) CreateClient(signal *pb.SignalRequest) (*sfu.Peer, error) {
 	}
 
 	peer := sfu.NewPeer(provider)
-	err = m.ClientPing(pid, join.Sid)
-	if err != nil {
-		return nil, errors.New(fmt.Sprintf("unable to ping new peer %s: %s", pid, err))
-	}
 
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.clients[pid] = peer
+	m.users[pid] = peer
 	return peer, nil
 }
 
-func (m *Manager) ClientPing(pid string, sid string) error {
-	return m.redis.Set(pb.KeyPeerToRoom(pid), sid, PeerPingFrequency).Err()
-}
-
-func (m *Manager) GetQueue(topic string, maxAge time.Duration) Queue {
-	return NewRedisQueue(m.redis, topic, maxAge)
+func (m *Manager) GetQueue(topic string) Queue {
+	return NewRedisQueue(m.redis, topic, QueueMessageTimeout)
 }
 
 func (m *Manager) WorkerForRoom(roomID string) (string, error) {
-	workerID, err := m.redis.Get(pb.KeyRoomToNode(roomID)).Result()
-	if err != nil {
-		workerID, err = m.FirstAvailableWorkerID("room.new")
-		if err != nil {
-			return "", err
-		}
-		m.ClaimRoomNode(roomID, workerID)
-	}
+	roomData, err := m.GetRemoteRoomData(roomID)
+	workerID := roomData.WorkerID
 	return workerID, err
 }
 
@@ -146,19 +201,6 @@ func (m *Manager) NodeCount() int {
 
 func (m *Manager) RoomCount() int {
 	return len(m.rooms)
-}
-
-func NewRedisManager(provider *NoirSFU, client *redis.Client, nodeID string) Manager {
-	manager := Manager{redis: client,
-		statuses: make(map[string]pb.WorkerData),
-		clients:  make(map[string]*sfu.Peer),
-		rooms:    make(map[string]Room),
-		sfu:      provider,
-		id:       nodeID,
-	}
-	(*provider).AttachManager(&manager)
-	return manager
-
 }
 
 func (m *Manager) ID() string {
@@ -182,7 +224,6 @@ func (m *Manager) Checkin() error {
 	if err != nil {
 		return err
 	}
-	m.statuses[id] = *status
 	return nil
 }
 
@@ -214,7 +255,7 @@ func (m *Manager) GetRemoteWorkerData(workerID string) (*pb.WorkerData, error) {
 		return nil, err
 	}
 	status := loaded.GetWorker()
-	m.statuses[workerID] = *status
+	m.workers[workerID] = *status
 	return status, nil
 }
 
@@ -244,7 +285,7 @@ func (m *Manager) UpdateAvailableNodes() error {
 		return err
 	}
 
-	m.statuses = make(map[string]pb.WorkerData)
+	m.workers = make(map[string]pb.WorkerData)
 
 	for _, id := range ids {
 		status, err := m.redis.HGet(pb.KeyNodeMap(), id).Result()
@@ -257,7 +298,7 @@ func (m *Manager) UpdateAvailableNodes() error {
 
 		if err := proto.Unmarshal([]byte(status), &decode); err != nil {
 			log.Errorf("error decoding worker data, ignoring worker %s", err)
-			delete(m.statuses, id)
+			delete(m.workers, id)
 			continue
 		}
 		if age := time.Now().Sub(decode.LastUpdate.AsTime()); age > 2*ManagerPingFrequency && decode.Id != m.worker.ID() {
@@ -266,7 +307,7 @@ func (m *Manager) UpdateAvailableNodes() error {
 			continue
 		}
 
-		m.statuses[id] = decode
+		m.workers[id] = decode
 	}
 
 	m.updated = time.Now()
@@ -298,8 +339,8 @@ func (m *Manager) GetLocalRoom(roomID string) (*Room, error) {
 }
 
 func (m *Manager) GetRemoteRoomExists(roomID string) (bool, error) {
-	val, err := m.redis.Exists(pb.KeyRoomToNode(roomID)).Result()
-	return val == 0, err
+	val, err := m.redis.Exists(pb.KeyRoomData(roomID)).Result()
+	return int(val) == 1, err
 }
 
 func (m *Manager) GetRemoteRoomData(roomID string) (*pb.RoomData, error) {
@@ -364,47 +405,8 @@ func NewTestManager(driver string, config Config) Manager {
 }
 
 func (m *Manager) WorkerData(id string) *pb.WorkerData {
-	status := m.statuses[id]
+	status := m.workers[id]
 	return &status
-}
-
-func (m *Manager) Noir() {
-	if m.worker == nil || m.router == nil {
-		panic("Manager not initialized")
-	}
-	info := time.NewTicker(5 * time.Second)
-	update := time.NewTicker(20 * time.Second)
-	checkin := time.NewTicker(15 * time.Second)
-	quit := make(chan os.Signal)
-	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
-	m.UpdateAvailableNodes()
-
-	go m.worker.HandleForever()
-	go m.router.HandleForever()
-
-	for {
-		select {
-		case <-checkin.C:
-			m.Checkin()
-		case <-update.C:
-			m.UpdateAvailableNodes()
-		case <-info.C:
-			log.Infof("%s: noirs=%d rooms=%d users=%d",
-				m.worker.ID(),
-				len(m.statuses),
-				m.RoomCount(),
-				len(m.clients),
-			)
-		case <-quit:
-			log.Warnf("quit requested, cleaning up...")
-			info.Stop()
-			update.Stop()
-			m.Cleanup()
-			log.Debugf("cleaned up ok!")
-			os.Exit(1)
-			return
-		}
-	}
 }
 
 func (m *Manager) MarkOffline(workerID string) {
@@ -446,6 +448,8 @@ func (m *Manager) CreateRoomIfNotExists(roomID string) (*pb.RoomData, error) {
 		log.Infof("room %s does not exist, auto-creating", roomID)
 
 		room := NewRoom(roomID)
+		room.data.WorkerID = m.id
+		room.data.LastUpdate = timestamppb.Now()
 
 		SaveRoomData(roomID, &room.data, m)
 

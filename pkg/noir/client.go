@@ -7,40 +7,35 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// Client represent the Client model
-type Client struct {
+// User represent the User model
+type User struct {
 	sfu.Peer
-	clientID string
-	roomID   string
-	data     *pb.PeerData
+	userID string
+	roomID string
+	data   *pb.UserData
 }
 
 // NewClient will create an object that represent the Signal interface
-func NewClient(provider *sfu.SFU, clientID string, roomID string) Client {
-	return Client{Peer: *sfu.NewPeer(provider), clientID: clientID, roomID: roomID, data: &pb.PeerData{Id: clientID, LastUpdate: timestamppb.Now()}}
+func NewClient(provider *sfu.SFU, userID string, roomID string) User {
+	return User{Peer: *sfu.NewPeer(provider), userID: userID, roomID: roomID, data: &pb.UserData{Id: userID, LastUpdate: timestamppb.Now()}}
 }
 
-func (s *Client) Join(roomID string, sdp webrtc.SessionDescription) (*webrtc.SessionDescription, error) {
+func (s *User) Join(roomID string, sdp webrtc.SessionDescription) (*webrtc.SessionDescription, error) {
 	return s.Peer.Join(roomID, sdp)
 }
 
-func (s *Client) PeerID() string {
+func (s *User) PeerID() string {
 	return ""
 }
 
-func (s *Client) SessionID() string {
+func (s *User) RoomID() string {
 	return s.roomID
 }
 
-func (s *Client) ClientID() string {
-	return s.clientID
+func (s *User) ID() string {
+	return s.userID
 }
 
-func (s *Client) Cleanup() {
+func (s *User) Cleanup() {
 	s.Close()
-}
-
-// SFUPeerBus watches on peer-send/{pid} for messages from peer
-func (s *Client) Listen(p *sfu.Peer) {
-
 }

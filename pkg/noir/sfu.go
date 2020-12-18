@@ -1,6 +1,7 @@
 package noir
 
 import (
+	"github.com/net-prophet/noir/pkg/proto"
 	log "github.com/pion/ion-log"
 	"math/rand"
 	"runtime"
@@ -59,9 +60,12 @@ func (s *noirSFU) ensureSession(sessionID string) *sfu.Session {
 		return s
 	}
 
+
 	log.Infof("creating session %s", sessionID)
 	mgr := *s.manager
+
 	session := sfu.NewSession(sessionID)
+
 	session.OnClose(func() {
 		log.Infof("closing session %s", sessionID)
 		room, err := mgr.GetRemoteRoomData(sessionID)
@@ -70,6 +74,9 @@ func (s *noirSFU) ensureSession(sessionID string) *sfu.Session {
 			if room.Options.MaxAgeSeconds == -1 {
 				log.Infof("closing empty room %s with expiry=-1", sessionID)
 				mgr.CloseRoom(sessionID)
+				if room.Options.Debug == 0 {
+					mgr.redis.Del(proto.KeyRoomData(sessionID))
+				}
 			}
 		}
 
@@ -77,6 +84,12 @@ func (s *noirSFU) ensureSession(sessionID string) *sfu.Session {
 		delete(s.sessions, sessionID)
 		s.mu.Unlock()
 	})
+
+	room := NewRoom(sessionID)
+	data, _ := mgr.GetRemoteRoomData(sessionID)
+	room.data = *data
+
+	mgr.BindRoomSession(room, session)
 
 	s.sessions[sessionID] = session
 	return session

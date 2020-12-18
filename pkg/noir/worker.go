@@ -127,8 +127,8 @@ func (w *worker) HandleJoin(signal *pb.SignalRequest) error {
 	join := signal.GetJoin()
 	pid := signal.Id
 
-	recv := w.manager.GetQueue(pb.KeyTopicToPeer(pid), PeerPingFrequency)
-	send := w.manager.GetQueue(pb.KeyTopicFromPeer(pid), PeerPingFrequency)
+	recv := w.manager.GetQueue(pb.KeyTopicToPeer(pid))
+	send := w.manager.GetQueue(pb.KeyTopicFromPeer(pid))
 
 	log.Infof("listening on %s", recv.Topic())
 
@@ -209,8 +209,8 @@ func (w *worker) HandleJoin(signal *pb.SignalRequest) error {
 }
 
 func (w *worker) PeerChannel(pid string, roomID string, peer *sfu.Peer) {
-	recv := w.manager.GetQueue(pb.KeyTopicToPeer(pid), PeerPingFrequency)
-	send := w.manager.GetQueue(pb.KeyTopicFromPeer(pid), PeerPingFrequency)
+	recv := w.manager.GetQueue(pb.KeyTopicToPeer(pid))
+	send := w.manager.GetQueue(pb.KeyTopicFromPeer(pid))
 	for {
 		request := pb.NoirRequest{}
 		message, err := recv.BlockUntilNext(0)
