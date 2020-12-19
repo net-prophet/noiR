@@ -1,4 +1,4 @@
-package proto
+package noir
 
 import "github.com/pion/webrtc/v3"
 

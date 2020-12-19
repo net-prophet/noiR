@@ -154,23 +154,28 @@ message RoomData {
     RoomOptions options = 5;
 }
 message RoomOptions {
-    string title = 1;
-    int32 maxAgeSeconds = 2;
-    int32 keyExpiryFactor = 3;
-    string joinPassword = 4;
-    string publishPassword = 5;
-    int32 maxPublishers = 6;
-    int32 maxPeers = 7;
-    int32 debug = 8;
+    int32 debug = 1;
+    string title = 2;
+    int32 maxAgeSeconds = 3;
+    int32 keyExpiryFactor = 4;
+    string joinPassword = 5;
+    string publishPassword = 6;
+    int32 maxPublishers = 7;
+    int32 maxPeers = 8;
 }
 
 message UserData {
     string id = 1;
-    google.protobuf.Timestamp lastUpdate = 2;
-    string roomID = 3;
-    UserOptions options = 4;
+    google.protobuf.Timestamp created = 2;
+    google.protobuf.Timestamp lastUpdate = 3;
+    string roomID = 4;
+    UserOptions options = 5;
+    bool publishing = 6;
 }
+
 message UserOptions {
-    string title = 1;
-    int32 debug = 2;
+    int32 debug = 1;
+    string title = 2;
+    int32 maxAgeSeconds = 3;
+    int32 keyExpiryFactor = 4;
 }

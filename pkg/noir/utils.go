@@ -152,7 +152,7 @@ func NewTestQueue(topic string) Queue {
 	return NewRedisQueue(rdb, topic, 60*time.Second)
 }
 
-func NewTestSetup() Manager {
+func NewTestSetup() (Manager, *redis.Client) {
 	driver := os.Getenv("TEST_REDIS")
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     driver,
@@ -161,7 +161,7 @@ func NewTestSetup() Manager {
 	})
 	config := Config{}
 	sfu := NewNoirSFU(config)
-	return SetupNoir(&sfu, rdb, "test-worker")
+	return SetupNoir(&sfu, rdb, "test-worker"), rdb
 }
 
 // listQueue is a queue for the tests!

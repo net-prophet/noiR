@@ -6,7 +6,7 @@ import (
 )
 
 func TestOpenRoom(t *testing.T) {
-	mgr := NewTestSetup()
+	mgr, _ := NewTestSetup()
 
 	request := &proto.NoirRequest{
 		Command: &proto.NoirRequest_RoomAdmin{

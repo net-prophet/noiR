@@ -7,7 +7,7 @@ import (
 )
 
 func TestHealth_Checkin(t *testing.T) {
-	mgr := NewTestSetup()
+	mgr, _ := NewTestSetup()
 	err := mgr.Checkin()
 	if err != nil {
 		t.Errorf("error setting up mgr %s", err)
@@ -22,7 +22,7 @@ func TestHealth_Checkin(t *testing.T) {
 }
 
 func TestHealth_AvailableWorkers(t *testing.T) {
-	mgr := NewTestSetup()
+	mgr, _ := NewTestSetup()
 	router := *mgr.GetRouter()
 
 	request := &pb.NoirRequest{
@@ -76,7 +76,7 @@ func TestHealth_AvailableWorkers(t *testing.T) {
 }
 
 func TestHealth_Rooms(t *testing.T) {
-	mgr := NewTestSetup()
+	mgr, _ := NewTestSetup()
 
 	request := &pb.NoirRequest{
 		Command: &pb.NoirRequest_Signal{

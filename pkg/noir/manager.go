@@ -21,7 +21,6 @@ import (
 
 const (
 	ManagerPingFrequency = 10 * time.Second
-	//PeerPingFrequency    = 25 * time.Second
 	QueueMessageTimeout = 25 * time.Second
 )
 
@@ -134,20 +133,25 @@ func (m *Manager) CloseRoom(roomID string) {
 	delete(m.rooms, roomID)
 }
 
-func (m *Manager) CloseClient(clientID string) {
-	client := m.users[clientID]
-	defer m.redis.Del(pb.KeyPeerToRoom(clientID))
+func (m *Manager) DisconnectUser(userID string) {
+	userData, _ := m.GetRemoteUserData(userID)
 
+	if userData.Options.MaxAgeSeconds == -1 {
+		defer m.redis.Del(pb.KeyUserData(userID))
+	}
+	defer m.redis.HDel(pb.KeyRoomUsers(userData.RoomID), userID)
+
+	client := m.users[userID]
 	if client != nil {
 		client.Close()
 	}
 
 	m.mu.Lock()
-	delete(m.users, clientID)
+	delete(m.users, userID)
 	m.mu.Unlock()
 }
 
-func (m *Manager) CreateClient(signal *pb.SignalRequest) (*sfu.Peer, error) {
+func (m *Manager) ConnectUser(signal *pb.SignalRequest) (*sfu.Peer, *pb.UserData, error) {
 	join := signal.GetJoin()
 	pid := signal.Id
 	provider := *m.SFU()
@@ -160,29 +164,46 @@ func (m *Manager) CreateClient(signal *pb.SignalRequest) (*sfu.Peer, error) {
 	}
 
 	if room.Options.MaxAgeSeconds > 0 {
-		if time.Now().After(GetEndTime(room)) && time.Now().Before(GetCleanupTime(room)) {
-			return nil, errors.New("rejecting joining an expired room")
+		if time.Now().After(GetRoomEndTime(room)) && time.Now().Before(GetRoomCleanupTime(room)) {
+			return nil, nil, errors.New("rejecting joining an expired room")
 		}
 	}
 
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("unable to ensure room %s: %s", join.Sid, err))
+		return nil, nil, errors.New(fmt.Sprintf("unable to ensure room %s: %s", join.Sid, err))
 	}
 	desc, err := ParseSDP(offer)
 	numTracks := len(desc.MediaDescriptions)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	if numTracks != 1 {
-		return nil, errors.New("when you join you must specify 1 empty data track")
+
+	var publishing bool
+
+	if numTracks == 1 && desc.MediaDescriptions[0].MediaName.Media == "application" {
+		publishing = false
+	} else if numTracks >= 1 {
+		// we have more than 1 media track, or the 1 track we have is not data
+		publishing = true
 	}
 
 	peer := sfu.NewPeer(provider)
 
+	// TODO -- Check if user exists first
+	userData := &pb.UserData{
+		Id:         pid,
+		LastUpdate: timestamppb.Now(),
+		RoomID:     join.Sid,
+		Publishing: publishing,
+		Options:    &pb.UserOptions{MaxAgeSeconds: -1},
+	}
+
+	m.SaveData(pb.KeyUserData(pid), &pb.NoirObject{Data: &pb.NoirObject_User{User: userData}}, 0)
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.users[pid] = peer
-	return peer, nil
+	return peer, userData, nil
 }
 
 func (m *Manager) GetQueue(topic string) Queue {
@@ -245,18 +266,6 @@ func (m *Manager) RandomWorkerId() (string, error) {
 		return "", errors.New("no workers available")
 	}
 	return ids[rand.Intn(len(ids))], nil
-}
-
-func (m *Manager) GetRemoteWorkerData(workerID string) (*pb.WorkerData, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	loaded, err := m.LoadData(pb.KeyWorkerData(workerID))
-	if err != nil {
-		return nil, err
-	}
-	status := loaded.GetWorker()
-	m.workers[workerID] = *status
-	return status, nil
 }
 
 func (m *Manager) GetRemoteWorkerQueue(id string) *Queue {
@@ -326,11 +335,11 @@ func (m *Manager) LookupSignalRoomID(signal *pb.SignalRequest) (string, error) {
 	case *pb.SignalRequest_Join:
 		return signal.GetJoin().Sid, nil
 	}
-	return m.LookupPeerRoomID(signal.Id)
-}
-
-func (m *Manager) LookupPeerRoomID(peerID string) (string, error) {
-	return m.redis.Get(pb.KeyPeerToRoom(peerID)).Result()
+	user, err := m.GetRemoteUserData(signal.Id)
+	if err != nil || user == nil {
+		return "", errors.New("user not found")
+	}
+	return user.RoomID, nil
 }
 
 func (m *Manager) GetLocalRoom(roomID string) (*Room, error) {
@@ -355,7 +364,17 @@ func (m *Manager) GetRemoteRoomData(roomID string) (*pb.RoomData, error) {
 }
 
 func (m *Manager) ClaimRoomNode(roomID string, nodeID string) (bool, error) {
-	return m.redis.SetNX(pb.KeyRoomToNode(roomID), nodeID, 10*time.Second).Result()
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	old, err := m.GetRemoteRoomData(roomID)
+	if err == nil && old.WorkerID != "" {
+		log.Warnf("tried claiming busy room")
+		return false, nil
+	}
+	old.WorkerID = m.id
+
+	err = m.SaveData(pb.KeyRoomData(roomID), &pb.NoirObject{Data: &pb.NoirObject_Room{Room: old}}, 0)
+	return err == nil, err
 }
 
 // Only on RedisManager
@@ -409,8 +428,14 @@ func (m *Manager) WorkerData(id string) *pb.WorkerData {
 	return &status
 }
 
-func (m *Manager) MarkOffline(workerID string) {
-	m.redis.HDel(pb.KeyNodeMap(), workerID)
+func (m *Manager) MarkOffline(nodeID string) {
+	for _, room := range m.redis.HKeys(pb.KeyNodeRooms(nodeID)).Val() {
+		for _, user := range m.redis.HKeys(pb.KeyRoomUsers(room)).Val() {
+			m.redis.Del(pb.KeyUserData(user))
+		}
+	}
+	m.redis.Del(pb.KeyNodeRooms(nodeID))
+	m.redis.HDel(pb.KeyNodeMap(), nodeID)
 }
 
 func (m *Manager) OpenRoomFromRequest(admin *pb.RoomAdminRequest) error {
@@ -460,6 +485,17 @@ func (m *Manager) CreateRoomIfNotExists(roomID string) (*pb.RoomData, error) {
 func (m *Manager) ValidateOffer(room *pb.RoomData, userID string, offer webrtc.SessionDescription) (*sdp.SessionDescription, error) {
 	desc, err := ParseSDP(offer)
 	return desc, err
+}
+
+func (m *Manager) GetRemoteUserData(userID string) (*pb.UserData, error) {
+	loaded, err := m.LoadData(pb.KeyUserData(userID))
+	if err != nil {
+		log.Errorf("error loading room data! %s", err)
+		return nil, err
+	}
+	//user := m.users[userID]
+	//user.UpdateData(loaded.GetUser())
+	return loaded.GetUser(), nil
 }
 
 func ParseSDP(offer webrtc.SessionDescription) (*sdp.SessionDescription, error) {

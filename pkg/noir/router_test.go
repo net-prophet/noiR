@@ -85,7 +85,7 @@ func TestRouterReadAction(t *testing.T) {
 }
 
 func TestRouterRouteAction(t *testing.T) {
-	mgr := NewTestSetup()
+	mgr, _ := NewTestSetup()
 	router := *mgr.GetRouter()
 
 	request := &pb.NoirRequest{
@@ -145,7 +145,7 @@ func TestRouterRouteAction(t *testing.T) {
 }
 
 func TestRouterHandleNext(t *testing.T) {
-	mgr := NewTestSetup()
+	mgr, _ := NewTestSetup()
 	router := *mgr.GetRouter()
 
 	request := &pb.NoirRequest{

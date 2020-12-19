@@ -5,19 +5,20 @@ import (
 	sfu "github.com/pion/ion-sfu/pkg/sfu"
 	"github.com/pion/webrtc/v3"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"time"
 )
 
 // User represent the User model
 type User struct {
 	sfu.Peer
 	userID string
-	roomID string
+	currentRoomID string
 	data   *pb.UserData
 }
 
-// NewClient will create an object that represent the Signal interface
-func NewClient(provider *sfu.SFU, userID string, roomID string) User {
-	return User{Peer: *sfu.NewPeer(provider), userID: userID, roomID: roomID, data: &pb.UserData{Id: userID, LastUpdate: timestamppb.Now()}}
+// NewUser will create an object that represent the Signal interface
+func NewUser(provider *sfu.SFU, userID string) User {
+	return User{Peer: *sfu.NewPeer(provider), userID: userID, data: &pb.UserData{Id: userID, LastUpdate: timestamppb.Now()}}
 }
 
 func (s *User) Join(roomID string, sdp webrtc.SessionDescription) (*webrtc.SessionDescription, error) {
@@ -29,7 +30,7 @@ func (s *User) PeerID() string {
 }
 
 func (s *User) RoomID() string {
-	return s.roomID
+	return s.currentRoomID
 }
 
 func (s *User) ID() string {
@@ -38,4 +39,14 @@ func (s *User) ID() string {
 
 func (s *User) Cleanup() {
 	s.Close()
+}
+
+func GetUserEndTime(data *pb.UserData) time.Time {
+	seconds := data.Options.GetMaxAgeSeconds()
+	return data.Created.AsTime().Add(time.Duration(seconds) * time.Second)
+}
+
+func GetUserCleanupTime(data *pb.UserData) time.Time {
+	seconds := data.Options.GetMaxAgeSeconds() * (1 + data.Options.KeyExpiryFactor)
+	return data.Created.AsTime().Add(time.Duration(seconds) * time.Second)
 }

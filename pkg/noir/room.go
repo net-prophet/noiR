@@ -37,7 +37,7 @@ func NewRoom(roomID string) Room {
 		data: pb.RoomData{
 			Created: timestamppb.Now(),
 			LastUpdate: timestamppb.Now(),
-			Options:    &pb.RoomOptions{MaxAgeSeconds: -1},
+			Options:    &pb.RoomOptions{MaxAgeSeconds: -1, MaxPeers: 2},
 		},
 	}
 }
@@ -86,12 +86,12 @@ func (r *Room) SetOptions(options *pb.RoomOptions) {
 	r.data.LastUpdate = timestamppb.Now()
 }
 
-func GetEndTime(data *pb.RoomData) time.Time {
+func GetRoomEndTime(data *pb.RoomData) time.Time {
 	seconds := data.Options.GetMaxAgeSeconds()
 	return data.Created.AsTime().Add(time.Duration(seconds) * time.Second)
 }
 
-func GetCleanupTime(data *pb.RoomData) time.Time {
+func GetRoomCleanupTime(data *pb.RoomData) time.Time {
 	seconds := data.Options.GetMaxAgeSeconds() * (1 + data.Options.KeyExpiryFactor)
 	return data.Created.AsTime().Add(time.Duration(seconds) * time.Second)
 }

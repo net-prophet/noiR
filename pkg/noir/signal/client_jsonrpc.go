@@ -52,7 +52,7 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 
 	case "join":
 
-		var join pb.Join
+		var join noir.Join
 		err := json.Unmarshal(*req.Params, &join)
 
 		if err != nil {
@@ -80,7 +80,7 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 		go s.Listen(ctx, conn, req)
 
 	case "offer":
-		var negotiation pb.Negotiation
+		var negotiation noir.Negotiation
 		err := json.Unmarshal(*req.Params, &negotiation)
 		marshaled, _ := json.Marshal(negotiation)
 		if err != nil {
@@ -104,7 +104,7 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 		noir.EnqueueRequest(toPeerQueue, command)
 
 	case "answer":
-		var negotiation pb.Negotiation
+		var negotiation noir.Negotiation
 		err := json.Unmarshal(*req.Params, &negotiation)
 		marshaled, _ := json.Marshal(negotiation)
 		if err != nil {

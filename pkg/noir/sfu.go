@@ -66,6 +66,8 @@ func (s *noirSFU) ensureSession(sessionID string) *sfu.Session {
 
 	session := sfu.NewSession(sessionID)
 
+	mgr.redis.Del(proto.KeyRoomUsers(sessionID))
+
 	session.OnClose(func() {
 		log.Infof("closing session %s", sessionID)
 		room, err := mgr.GetRemoteRoomData(sessionID)
