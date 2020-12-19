@@ -78,21 +78,25 @@ func (r *router) TargetForSignal(action string, signal *pb.SignalRequest) (strin
 			log.Errorf("error getting room data: %s", err)
 			return "", err
 		}
-		if _, ok := r.mgr.workers[roomData.WorkerID]; ok {
-			return roomData.WorkerID, nil
+		nodeData, err := r.mgr.GetRemoteNodeData(roomData.NodeID)
+		if ValidateHealthy(nodeData) {
+			log.Infof("found node %s", roomData.NodeID)
+			return roomData.NodeID, nil
 		} else {
-			log.Infof("room %s was assigned to %s which is offline, reassigning...", room, roomData.WorkerID)
+			log.Infof("CANT FIND node %s", roomData.NodeID)
 			target, err := r.mgr.FirstAvailableWorkerID(action)
 			if err != nil {
 				log.Warnf("")
 				return "", err
 			}
-			roomData.WorkerID = target
-			r.mgr.SaveData(pb.KeyRoomData(room), &pb.NoirObject{
-				Data: &pb.NoirObject_Room{
-					Room: roomData,
-				},
-			}, 0)
+			claimed, err := r.mgr.ClaimRoomNode(roomData.Id, target)
+			if err != nil {
+				return "", err
+			}
+			if claimed == false {
+				return "", errors.New("unable to assign room")
+			}
+			log.Infof("room %s was assigned to %s which is offline, moved to %s", room, roomData.NodeID, target)
 			return target, nil
 		}
 	}

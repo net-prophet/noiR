@@ -26,12 +26,12 @@ func (w *worker) HandleJoin(signal *pb.SignalRequest) error {
 	pid := signal.Id
 
 	roomData, err := mgr.GetRemoteRoomData(join.Sid)
+	options := roomData.GetOptions()
 
-	if err == nil && roomData.Options.MaxPeers > 0 {
+	if err == nil && options.GetMaxPeers() > 0 {
 		room := mgr.rooms[join.Sid]
 		session := room.Session()
-		currentPeers := len(session.Peers())
-		if currentPeers >= int(roomData.Options.MaxPeers) {
+		if session != nil && len(session.Peers()) >= int(options.GetMaxPeers()) {
 			return errors.New("room full")
 		}
 	}
@@ -155,13 +155,32 @@ func (w *worker) PeerChannel(userData *pb.UserData, peer *sfu.Peer) {
 					log.Debugf("got answer, setting description")
 					peer.SetRemoteDescription(desc.Desc)
 				} else if desc.Desc.Type == webrtc.SDPTypeOffer {
-					roomData, err := w.manager.GetRemoteRoomData(userData.RoomID)
+					roomData, err := w.manager.GetRemoteRoomData(userData.GetRoomID())
 					if err != nil {
 						log.Errorf("err getting room to validate offer: %s", err)
 						continue
 					}
 
 					validated, err := w.manager.ValidateOffer(roomData, userData.Id, desc.Desc)
+
+					numTracks := len(validated.MediaDescriptions)
+					if numTracks == 1 && validated.MediaDescriptions[0].MediaName.Media == "application" {
+						userData.Publishing = false
+					} else if numTracks >= 1 {
+						// Publishing
+						options := roomData.GetOptions()
+						if options.GetIsChannel() == true {
+							if roomData.GetPublisher() != "" {
+								log.Infof("channel already has a publisher, denying: %s", roomData.Id)
+								continue
+							} else {
+								log.Infof("publishing into channel %s", userData.RoomID)
+								roomData.Publisher = userData.Id
+								SaveRoomData(userData.RoomID, roomData, w.manager)
+							}
+						}
+						userData.Publishing = true
+					}
 
 					if err != nil {
 						log.Infof("rejected offer: %s", err)
@@ -184,18 +203,9 @@ func (w *worker) PeerChannel(userData *pb.UserData, peer *sfu.Peer) {
 						log.Errorf("offer answer send error %v ", err)
 					}
 
-					numTracks := len(validated.MediaDescriptions)
-					if numTracks == 1 && validated.MediaDescriptions[0].MediaName.Media == "application" {
-						userData.Publishing = false
-					} else {
-						userData.Publishing = numTracks >= 1
-					}
-
 					w.manager.SaveData(pb.KeyUserData(userData.Id), &pb.NoirObject{
 						Data: &pb.NoirObject_User{User: userData},
 					}, 0)
-
-					log.Infof("Saving peer: %s %s %s", userData.Id, userData.Publishing, numTracks)
 				}
 			case *pb.SignalRequest_Trickle:
 				trickle := signal.GetTrickle()

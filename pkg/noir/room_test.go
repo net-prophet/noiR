@@ -18,7 +18,6 @@ func TestOpenRoom(t *testing.T) {
 							MaxAgeSeconds:   10,
 							JoinPassword:    "secret",
 							PublishPassword: "publish",
-							MaxPublishers:   1,
 							MaxPeers:        2,
 						},
 					},

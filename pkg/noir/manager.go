@@ -32,7 +32,7 @@ type Manager struct {
 	worker  Worker
 	config  sfu.Config
 	sfu     *NoirSFU
-	workers map[string]pb.WorkerData
+	workers map[string]pb.NodeData
 	users   map[string]*sfu.Peer
 	rooms   map[string]Room
 	mu      sync.RWMutex
@@ -54,7 +54,7 @@ func SetupNoir(sfu *NoirSFU, client *redis.Client, nodeID string) Manager {
 
 func NewRedisManager(provider *NoirSFU, client *redis.Client, nodeID string) Manager {
 	manager := Manager{redis: client,
-		workers: make(map[string]pb.WorkerData),
+		workers: make(map[string]pb.NodeData),
 		users:   make(map[string]*sfu.Peer),
 		rooms:   make(map[string]Room),
 		sfu:     provider,
@@ -141,10 +141,36 @@ func (m *Manager) DisconnectUser(userID string) {
 	}
 	defer m.redis.HDel(pb.KeyRoomUsers(userData.RoomID), userID)
 
+	// Cleanup the SFU peer
 	client := m.users[userID]
 	if client != nil {
 		client.Close()
 	}
+
+	// Send Kill to the Peer Queues
+	toPeerQueue := m.GetQueue(pb.KeyTopicToPeer(userID))
+	fromPeerQueue := m.GetQueue(pb.KeyTopicFromPeer(userID))
+	EnqueueRequest(toPeerQueue, &pb.NoirRequest{
+		Command: &pb.NoirRequest_Signal{
+			Signal: &pb.SignalRequest{
+				Id: userID,
+				Payload: &pb.SignalRequest_Kill{
+					Kill: true,
+				},
+			},
+		},
+	})
+
+	EnqueueReply(fromPeerQueue, &pb.NoirReply{
+		Command: &pb.NoirReply_Signal{
+			Signal: &pb.SignalReply{
+				Id: userID,
+				Payload: &pb.SignalReply_Kill{
+					Kill: true,
+				},
+			},
+		},
+	})
 
 	m.mu.Lock()
 	delete(m.users, userID)
@@ -212,8 +238,7 @@ func (m *Manager) GetQueue(topic string) Queue {
 
 func (m *Manager) WorkerForRoom(roomID string) (string, error) {
 	roomData, err := m.GetRemoteRoomData(roomID)
-	workerID := roomData.WorkerID
-	return workerID, err
+	return roomData.GetNodeID(), err
 }
 
 func (m *Manager) NodeCount() int {
@@ -236,7 +261,7 @@ func (m *Manager) SFU() *NoirSFU {
 
 func (m *Manager) Checkin() error {
 	id := m.worker.ID()
-	status := &pb.WorkerData{Id: id, LastUpdate: timestamppb.Now()}
+	status := &pb.NodeData{Id: id, LastUpdate: timestamppb.Now()}
 	value, err := proto.Marshal(status)
 	if err != nil {
 		return err
@@ -294,7 +319,7 @@ func (m *Manager) UpdateAvailableNodes() error {
 		return err
 	}
 
-	m.workers = make(map[string]pb.WorkerData)
+	m.workers = make(map[string]pb.NodeData)
 
 	for _, id := range ids {
 		status, err := m.redis.HGet(pb.KeyNodeMap(), id).Result()
@@ -303,14 +328,14 @@ func (m *Manager) UpdateAvailableNodes() error {
 			return err
 		}
 
-		var decode pb.WorkerData
+		var decode pb.NodeData
 
 		if err := proto.Unmarshal([]byte(status), &decode); err != nil {
 			log.Errorf("error decoding worker data, ignoring worker %s", err)
 			delete(m.workers, id)
 			continue
 		}
-		if age := time.Now().Sub(decode.LastUpdate.AsTime()); age > 2*ManagerPingFrequency && decode.Id != m.worker.ID() {
+		if !ValidateHealthy(&decode) && decode.Id != m.worker.ID() {
 			log.Warnf("haven't heard from %s; marking it offline", decode.Id)
 			m.MarkOffline(decode.Id)
 			continue
@@ -366,15 +391,32 @@ func (m *Manager) GetRemoteRoomData(roomID string) (*pb.RoomData, error) {
 func (m *Manager) ClaimRoomNode(roomID string, nodeID string) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	old, err := m.GetRemoteRoomData(roomID)
-	if err == nil && old.WorkerID != "" {
-		log.Warnf("tried claiming busy room")
-		return false, nil
+	if exists, _ := m.GetRemoteRoomExists(roomID) ; exists == false {
+		room := NewRoom(roomID) // Just used for the data
+		data := &room.data
+		data.NodeID = m.id
+		err := SaveRoomData(roomID, data, m)
+		m.redis.HSet(pb.KeyNodeRooms(m.id), roomID, 1)
+		log.Infof("claimed room %s", roomID)
+		return err == nil, err
+	} else {
+		data, err := m.GetRemoteRoomData(roomID)
+		if err == nil && data.NodeID != "" {
+			if _, alive := m.workers[data.NodeID] ; alive {
+				log.Warnf("tried claiming busy room")
+				return false, nil
+			}
+			data.NodeID = m.id
+			err := SaveRoomData(roomID, data, m)
+			m.redis.HSet(pb.KeyNodeRooms(m.id), roomID, 1)
+			log.Infof("claimed room %s", roomID)
+			return err == nil, err
+		} else if err != nil {
+			log.Errorf("error claiming room %s", err)
+			return false, err
+		}
 	}
-	old.WorkerID = m.id
-
-	err = m.SaveData(pb.KeyRoomData(roomID), &pb.NoirObject{Data: &pb.NoirObject_Room{Room: old}}, 0)
-	return err == nil, err
+	return false, nil
 }
 
 // Only on RedisManager
@@ -411,19 +453,7 @@ func (m *Manager) LoadData(key string) (*pb.NoirObject, error) {
 	return &load, nil
 }
 
-// Local Memory Manager
-
-func NewTestManager(driver string, config Config) Manager {
-	rdb := redis.NewClient(&redis.Options{
-		Addr:     driver,
-		Password: "",
-		DB:       0,
-	})
-	sfu := NewNoirSFU(config)
-	return NewRedisManager(&sfu, rdb, RandomString(4))
-}
-
-func (m *Manager) WorkerData(id string) *pb.WorkerData {
+func (m *Manager) WorkerData(id string) *pb.NodeData {
 	status := m.workers[id]
 	return &status
 }
@@ -473,7 +503,7 @@ func (m *Manager) CreateRoomIfNotExists(roomID string) (*pb.RoomData, error) {
 		log.Infof("room %s does not exist, auto-creating", roomID)
 
 		room := NewRoom(roomID)
-		room.data.WorkerID = m.id
+		room.data.NodeID = m.id
 		room.data.LastUpdate = timestamppb.Now()
 
 		SaveRoomData(roomID, &room.data, m)
@@ -493,9 +523,26 @@ func (m *Manager) GetRemoteUserData(userID string) (*pb.UserData, error) {
 		log.Errorf("error loading room data! %s", err)
 		return nil, err
 	}
-	//user := m.users[userID]
-	//user.UpdateData(loaded.GetUser())
 	return loaded.GetUser(), nil
+}
+
+func (m *Manager) GetRemoteNodeData(nodeID string) (*pb.NodeData, error) {
+	loaded := &pb.NoirObject{}
+	data, err := m.redis.HGet(pb.KeyNodeMap(), nodeID).Result()
+	if err != nil {
+		log.Warnf("failed loading noirstatus %s", err)
+		return nil, err
+	}
+	if err = proto.Unmarshal([]byte(data), loaded); err != nil {
+		log.Warnf("failed unmarshaling noirstatus %s", err)
+		return nil, err
+	}
+
+	if err != nil {
+		log.Errorf("error loading room data! %s", err)
+		return nil, err
+	}
+	return loaded.GetNode(), nil
 }
 
 func ParseSDP(offer webrtc.SessionDescription) (*sdp.SessionDescription, error) {
@@ -509,4 +556,10 @@ func ParseSDP(offer webrtc.SessionDescription) (*sdp.SessionDescription, error) 
 		return nil, errors.New("first track must be an empty datachannel")
 	}
 	return desc, nil
+}
+
+func ValidateHealthy(node *pb.NodeData) bool {
+	age := time.Now().Sub(node.GetLastUpdate().AsTime())
+	healthyWindow := 2*ManagerPingFrequency
+	return age < healthyWindow
 }

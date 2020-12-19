@@ -37,9 +37,18 @@ func NewRoom(roomID string) Room {
 		data: pb.RoomData{
 			Created: timestamppb.Now(),
 			LastUpdate: timestamppb.Now(),
-			Options:    &pb.RoomOptions{MaxAgeSeconds: -1, MaxPeers: 2},
+			Options:    &pb.RoomOptions{MaxAgeSeconds: -1, IsChannel: true},
 		},
 	}
+}
+
+
+// A Channel is a Room with isChannel=true, only allows 1 publisher
+func NewChannel(roomID string, publishPassword string) Room {
+	room := NewRoom(roomID)
+	room.data.Options.IsChannel = true
+	room.data.Options.PublishPassword = publishPassword
+	return room
 }
 
 func (r *Room) LatestData() *pb.RoomData {
@@ -52,7 +61,7 @@ func (r *Room) UpdateData(remote *pb.RoomData) {
 func (r *Room) Bind(session *sfu.Session, manager *Manager) {
 	r.session = session
 	r.manager = manager
-	r.data.WorkerID = manager.id
+	r.data.NodeID = manager.id
 	r.Save()
 }
 
@@ -69,16 +78,18 @@ func (r *Room) Save() error {
 }
 
 func SaveRoomData(roomID string, data *pb.RoomData, m *Manager) error {
-	expiry := data.Options.MaxAgeSeconds
+	options := data.GetOptions()
+	expiry := options.GetMaxAgeSeconds()
 	if expiry == -1 {
 		expiry = 0
 	}
+	data.Id = roomID
 
 	return m.SaveData(pb.KeyRoomData(roomID), &pb.NoirObject{
 		Data: &pb.NoirObject_Room{
 			Room: data,
 		},
-	}, time.Duration(expiry * (data.Options.KeyExpiryFactor+1)) * time.Second)
+	}, time.Duration(expiry * (options.GetKeyExpiryFactor()+1)) * time.Second)
 }
 
 func (r *Room) SetOptions(options *pb.RoomOptions) {

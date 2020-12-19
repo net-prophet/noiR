@@ -160,31 +160,7 @@ func (s *clientJSONRPCBridge) Handle(ctx context.Context, conn *jsonrpc2.Conn, r
 }
 
 func (s *clientJSONRPCBridge) Close() {
-	toPeerQueue := s.manager.GetQueue(pb.KeyTopicToPeer(s.pid))
-	fromPeerQueue := s.manager.GetQueue(pb.KeyTopicFromPeer(s.pid))
-	noir.EnqueueRequest(toPeerQueue, &pb.NoirRequest{
-		Command: &pb.NoirRequest_Signal{
-			Signal: &pb.SignalRequest{
-				// SignalRequest.id should be called pid but we are ion-sfu compatible
-				Id: s.pid,
-				Payload: &pb.SignalRequest_Kill{
-					Kill: true,
-				},
-			},
-		},
-	})
-
-	noir.EnqueueReply(fromPeerQueue, &pb.NoirReply{
-		Command: &pb.NoirReply_Signal{
-			Signal: &pb.SignalReply{
-				// SignalRequest.id should be called pid but we are ion-sfu compatible
-				Id: s.pid,
-				Payload: &pb.SignalReply_Kill{
-					Kill: true,
-				},
-			},
-		},
-	})
+	s.manager.DisconnectUser(s.pid)
 }
 
 func (s *clientJSONRPCBridge) Listen(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
