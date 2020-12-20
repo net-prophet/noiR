@@ -20,10 +20,10 @@
 
 ### Features
 + Blazing fast full-featured WebRTC SFU for modern video conferences
-+ Admin API for creating rooms, managing members and seeing health statistics
-+ Basic Authentication - Require a password to join, or require a password to publish
 + Room Limits - Limit the number of members, publishers, or the maximum age of a room
 + "Channels" - A channel is a 1-publisher fanout room with publish authentication
++ (WIP) Basic Authentication - Require a password to join, or require a password to publish
++ (WIP) Admin API for creating rooms, managing members and seeing health statistics
 + (Planned) Stream Recording - Automatically record all streams in a room and upload them to S3
 + (Planned) Play into Room - Play a video or audio file from local disk or URL into a room or channel
 + (Planned) Admin Dashboard
@@ -45,9 +45,8 @@ but all messages are forwarded over redis to whichever `noir` node is hosting th
 Clients (callers) can connect directly to `noiR` over public `jsonrpc` interfaces using `ion-sdk-js`
 or any regular `ion-sfu` client; management commands get sent over a separate `jsonrpc` interface.
 
-<center>
-    <img src="./architecture.png" />
-</center>
+<img src="./architecture.png" />
+**Admin APIs are WIP, currently you must submit admin commands via redis**
 
 ### Usage
 
@@ -80,10 +79,10 @@ demonstration without your help.
 - [x] "Doing It Live" - Adapted my own dependent codebases to start using `noiR` immediately
 - [x] "Demo Mode": Bundled `ion-sdk-react` storybooks for instant testing in a browser
 - [x] Learn to write golang unit tests; write unit tests :'(
-- [ ] Ensure cleanup safety, no dead peers
+- [ ] (50%) Ensure cleanup safety, no dead peers
+- [ ] (80%) Room permissions - Allow/Deny new joins, channels, basicauth room passwords, admin squelch + kick
 - [ ] Admin JSONRPC API :7001 (management commands and/or multiplexed client connections)
 - [ ] Admin gRPC API :50051 (management commands and/or multiplexed client connections)
-- [ ] Room permissions - Allow/Deny new joins, basicauth room passwords, admin squelch + kick
 - [ ] Stream permissions - Fine-grained control over audio/video publish permissions
 - [ ] Load test cluster mode with `ion-load-tool` (depends on `gRPC` API)
 - [ ] In-cluster SFU-SFU Relay (HA Stream Mirroring, Large Room Support)
