@@ -37,7 +37,7 @@ func NewRoom(roomID string) Room {
 		data: pb.RoomData{
 			Created: timestamppb.Now(),
 			LastUpdate: timestamppb.Now(),
-			Options:    &pb.RoomOptions{MaxAgeSeconds: -1, IsChannel: true},
+			Options:    &pb.RoomOptions{MaxAgeSeconds: -1},
 		},
 	}
 }
