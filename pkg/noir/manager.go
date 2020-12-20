@@ -261,7 +261,11 @@ func (m *Manager) SFU() *NoirSFU {
 
 func (m *Manager) Checkin() error {
 	id := m.worker.ID()
-	status := &pb.NodeData{Id: id, LastUpdate: timestamppb.Now()}
+	status := &pb.NoirObject{
+		Data: &pb.NoirObject_Node{
+			Node: &pb.NodeData{Id: id, LastUpdate: timestamppb.Now()},
+		},
+	}
 	value, err := proto.Marshal(status)
 	if err != nil {
 		return err
@@ -328,20 +332,23 @@ func (m *Manager) UpdateAvailableNodes() error {
 			return err
 		}
 
-		var decode pb.NodeData
+		var decode pb.NoirObject
 
 		if err := proto.Unmarshal([]byte(status), &decode); err != nil {
 			log.Errorf("error decoding worker data, ignoring worker %s", err)
 			delete(m.workers, id)
 			continue
 		}
-		if !ValidateHealthy(&decode) && decode.Id != m.worker.ID() {
-			log.Warnf("haven't heard from %s; marking it offline", decode.Id)
-			m.MarkOffline(decode.Id)
+		remote := decode.GetNode()
+
+
+		if !ValidateHealthy(remote) && remote.Id != m.worker.ID() {
+			log.Warnf("haven't heard from %s; marking it offline", remote.Id)
+			m.MarkOffline(remote.Id)
 			continue
 		}
 
-		m.workers[id] = decode
+		m.workers[id] = *decode.GetNode()
 	}
 
 	m.updated = time.Now()
@@ -533,6 +540,7 @@ func (m *Manager) GetRemoteNodeData(nodeID string) (*pb.NodeData, error) {
 		log.Warnf("failed loading noirstatus %s", err)
 		return nil, err
 	}
+
 	if err = proto.Unmarshal([]byte(data), loaded); err != nil {
 		log.Warnf("failed unmarshaling noirstatus %s", err)
 		return nil, err
@@ -543,6 +551,19 @@ func (m *Manager) GetRemoteNodeData(nodeID string) (*pb.NodeData, error) {
 		return nil, err
 	}
 	return loaded.GetNode(), nil
+}
+
+func (m *Manager) ValidateHealthyNodeID(nodeID string) error {
+	exists, _ := m.redis.HExists(pb.KeyNodeMap(), nodeID).Result()
+	if exists == false {
+		return errors.New("no such room")
+	}
+
+	data, invalid := m.GetRemoteNodeData(nodeID)
+	if invalid == nil && ValidateHealthy(data) {
+		return nil
+	}
+	return invalid
 }
 
 func ParseSDP(offer webrtc.SessionDescription) (*sdp.SessionDescription, error) {

@@ -64,22 +64,30 @@ func (r *router) NextCommand() (*pb.NoirRequest, error) {
 
 func (r *router) TargetForSignal(action string, signal *pb.SignalRequest) (string, error) {
 	// Signal messages get routed to the worker handling the Room
-	room, _ := r.mgr.LookupSignalRoomID(signal)
+	roomID, _ := r.mgr.LookupSignalRoomID(signal)
 
-	roomExists, _ := r.mgr.GetRemoteRoomExists(room)
+	roomExists, _ := r.mgr.GetRemoteRoomExists(roomID)
 
 	if roomExists == false {
 		// Assign the first peer queue a Room to a new worker based on capacity
-		log.Infof("no such room, routing to random worker")
-		return r.mgr.FirstAvailableWorkerID(action)
-	} else {
-		roomData, err := r.mgr.GetRemoteRoomData(room)
-		if err != nil {
-			log.Errorf("error getting room data: %s", err)
+		log.Infof("no such roomID, routing to random worker")
+		target, err := r.mgr.FirstAvailableWorkerID(action)
+		claimed, err := r.mgr.ClaimRoomNode(roomID, target)
+		if claimed == true && err == nil {
+			return target, nil
+		} else {
 			return "", err
 		}
-		nodeData, err := r.mgr.GetRemoteNodeData(roomData.NodeID)
-		if ValidateHealthy(nodeData) {
+	} else {
+		roomData, err := r.mgr.GetRemoteRoomData(roomID)
+		if err != nil {
+			log.Errorf("error getting roomID data: %s", err)
+			return "", err
+		}
+
+		err = r.mgr.ValidateHealthyNodeID(roomData.NodeID)
+
+		if err == nil {
 			log.Infof("found node %s", roomData.NodeID)
 			return roomData.NodeID, nil
 		} else {
@@ -94,9 +102,9 @@ func (r *router) TargetForSignal(action string, signal *pb.SignalRequest) (strin
 				return "", err
 			}
 			if claimed == false {
-				return "", errors.New("unable to assign room")
+				return "", errors.New("unable to assign roomID")
 			}
-			log.Infof("room %s was assigned to %s which is offline, moved to %s", room, roomData.NodeID, target)
+			log.Infof("roomID %s was assigned to %s which is offline, moved to %s", roomID, roomData.NodeID, target)
 			return target, nil
 		}
 	}
