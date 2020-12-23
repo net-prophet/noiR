@@ -58,7 +58,7 @@ func PublicJSONRPC(mgr *noir.Manager, publicJrpcAddr string, key string, cert st
 
 }
 
-func AdminJSONRPC(n *noir.NoirSFU, adminJrpcAddr string) {
+func AdminJSONRPC(mgr *noir.Manager, adminJrpcAddr string) {
 	upgrader := websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
 			return true
@@ -74,7 +74,7 @@ func AdminJSONRPC(n *noir.NoirSFU, adminJrpcAddr string) {
 		}
 		defer c.Close()
 
-		p := NewAdminJSONRPC(n)
+		p := NewAdminJSONRPC(mgr.SFU(), mgr)
 
 		defer p.Close()
 

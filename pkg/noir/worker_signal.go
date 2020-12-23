@@ -17,6 +17,7 @@ func (w *worker) HandleSignal(request *pb.NoirRequest) error {
 	return nil
 }
 
+
 func (w *worker) HandleJoin(signal *pb.SignalRequest) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
@@ -43,7 +44,6 @@ func (w *worker) HandleJoin(signal *pb.SignalRequest) error {
 	}
 
 	recv := w.manager.GetQueue(pb.KeyTopicToPeer(pid))
-	send := w.manager.GetQueue(pb.KeyTopicFromPeer(pid))
 
 	log.Infof("listening on %s", recv.Topic())
 
@@ -52,7 +52,7 @@ func (w *worker) HandleJoin(signal *pb.SignalRequest) error {
 		if err != nil {
 			log.Errorf("OnIceCandidate error %s", err)
 		}
-		err = EnqueueReply(send, &pb.NoirReply{
+		w.SignalReply(pid, &pb.NoirReply{
 			Command: &pb.NoirReply_Signal{
 				Signal: &pb.SignalReply{
 					Id: pid,
@@ -80,7 +80,7 @@ func (w *worker) HandleJoin(signal *pb.SignalRequest) error {
 		if err != nil {
 			log.Errorf("OnIceCandidate error %s", err)
 		}
-		err = EnqueueReply(send, &pb.NoirReply{
+		w.SignalReply(pid, &pb.NoirReply{
 			Command: &pb.NoirReply_Signal{
 				Signal: &pb.SignalReply{
 					Id:      pid,
@@ -104,7 +104,7 @@ func (w *worker) HandleJoin(signal *pb.SignalRequest) error {
 
 	packed, _ := json.Marshal(answer)
 
-	EnqueueReply(send, &pb.NoirReply{
+	w.SignalReply(pid, &pb.NoirReply{
 		Command: &pb.NoirReply_Signal{
 			Signal: &pb.SignalReply{
 				Id:        pid,
@@ -123,9 +123,14 @@ func (w *worker) HandleJoin(signal *pb.SignalRequest) error {
 	return nil
 }
 
+func (w *worker) SignalReply(pid string, reply *pb.NoirReply) error {
+	send := w.manager.GetQueue(pb.KeyTopicFromPeer(pid))
+	defer w.manager.redis.Publish(pb.KeyPeerNewsChannel(pid), pid)
+	return EnqueueReply(send, reply)
+}
+
 func (w *worker) PeerChannel(userData *pb.UserData, peer *sfu.Peer) {
 	recv := w.manager.GetQueue(pb.KeyTopicToPeer(userData.Id))
-	send := w.manager.GetQueue(pb.KeyTopicFromPeer(userData.Id))
 	for {
 		request := pb.NoirRequest{}
 		message, err := recv.BlockUntilNext(0)
@@ -190,7 +195,7 @@ func (w *worker) PeerChannel(userData *pb.UserData, peer *sfu.Peer) {
 					answer, _ := peer.Answer(desc.Desc)
 					bytes, err := json.Marshal(answer)
 					log.Debugf("got offer, sending reply %s", string(bytes))
-					err = EnqueueReply(send, &pb.NoirReply{
+					w.SignalReply(userData.Id, &pb.NoirReply{
 						Command: &pb.NoirReply_Signal{
 							Signal: &pb.SignalReply{
 								Id:        userData.Id,

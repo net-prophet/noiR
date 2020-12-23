@@ -2,24 +2,39 @@ package signal
 
 import (
 	"context"
-	noir2 "github.com/net-prophet/noir/pkg/noir"
+	"encoding/json"
+	"github.com/net-prophet/noir/pkg/noir"
+	pb "github.com/net-prophet/noir/pkg/proto"
 	log "github.com/pion/ion-log"
 	"github.com/sourcegraph/jsonrpc2"
 )
 
 type adminJSONRPC struct {
-	sfu *noir2.NoirSFU
+	sfu *noir.NoirSFU
+	manager *noir.Manager
 }
 
-func NewAdminJSONRPC(s *noir2.NoirSFU) *adminJSONRPC {
-	return &adminJSONRPC{s}
+func NewAdminJSONRPC(s *noir.NoirSFU, manager *noir.Manager) *adminJSONRPC {
+	return &adminJSONRPC{s, manager}
 }
 
 func (a *adminJSONRPC) Handle(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {
 	log.Infof("got method %s", req.Method)
+
+	router := a.manager.GetRouter()
+	routerQueue := (*router).GetQueue()
+
+	original, _ := req.MarshalJSON()
+
+	var cmd *pb.NoirRequest
+	json.Unmarshal(original, cmd)
+
+	noir.EnqueueRequest(*routerQueue, cmd)
+
 }
 
 func (s *adminJSONRPC) Close() {
+
 }
 
 func (s *adminJSONRPC) Listen(ctx context.Context, conn *jsonrpc2.Conn, req *jsonrpc2.Request) {

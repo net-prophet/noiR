@@ -138,7 +138,7 @@ func main() {
 		go signal.PublicJSONRPC(&mgr, publicJrpcAddr, key, cert)
 	}
 	if adminJrpcAddr != "" {
-		go signal.AdminJSONRPC(&SFU, adminJrpcAddr)
+		go signal.AdminJSONRPC(&mgr, adminJrpcAddr)
 	}
 	if grpcAddr != "" {
 		go signal.AdminGRPC(&SFU, grpcAddr)
