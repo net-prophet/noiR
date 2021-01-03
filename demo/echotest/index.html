@@ -69,17 +69,17 @@
       <div class="row">
         <div class="col-6 pt-2">
           <span
-            style="position: absolute; margin-left: 5px; margin-top: 5px"
+            style="position: absolute; margin-left: 5px; margin-top: 5px;"
             class="badge badge-primary"
             >Local</span
           >
           <video
             id="local-video"
-            style="background-color: black"
+            style="background-color: black;"
             width="320"
             height="240"
           ></video>
-          <div class="controls" style="display: none">
+          <div class="controls" style="display: none;">
             <div class="row pt-3">
               <div class="col-3">
                 <strong>Video</strong>
@@ -138,31 +138,31 @@
         </div>
         <div class="col-6 pt-2">
           <span
-            style="position: absolute; margin-left: 5px; margin-top: 5px"
+            style="position: absolute; margin-left: 5px; margin-top: 5px;"
             class="badge badge-primary"
             >Remote</span
           >
           <span
             id="size-tag"
-            style="position: absolute; margin-left: 5px; top: 225px"
+            style="position: absolute; margin-left: 5px; top: 225px;"
             class="badge badge-primary"
           ></span>
           <span
             id="br-tag"
-            style="position: absolute; left: 270px; top: 225px"
+            style="position: absolute; left: 270px; top: 225px;"
             class="badge badge-primary"
           ></span>
           <video
             id="remote-video"
-            style="background-color: black"
+            style="background-color: black;"
             width="320"
             height="240"
           ></video>
-          <div class="controls" style="display: none">
+          <div class="controls" style="display: none;">
             <div class="row pt-3">
               <div class="col-3">
                 <strong>Video</strong>
-                <div id="simulcast-controls" style="display: none">
+                <div id="simulcast-controls" style="display: none;">
                   <div class="radio">
                     <label
                       ><input
@@ -170,6 +170,7 @@
                         onclick="controlRemoteVideo(this)"
                         value="high"
                         name="optremotevideos"
+                        checked
                       />
                       High</label
                     >
@@ -209,7 +210,7 @@
                   </div>
                 </div>
 
-                <div id="simple-controls" style="display: none">
+                <div id="simple-controls" style="display: none;">
                   <div class="radio">
                     <label
                       ><input
@@ -328,7 +329,8 @@
       integrity="sha384-B4gt1jrGC7Jh4AgTPSdUtOBvfO8shuf57BaghqFfPlYxofvL8/KUEfYiJOMMV+rV"
       crossorigin="anonymous"
     ></script>
-    <script src="https://unpkg.com/ion-sdk-js@1.5.0/dist/ion-sdk.min.js"></script>
+    <script src="https://unpkg.com/ion-sdk-js@1.5.5/dist/ion-sdk.min.js"></script>
+    <script src="https://unpkg.com/ion-sdk-js@1.5.5/dist/json-rpc.min.js"></script>
     <script>
       const localVideo = document.getElementById("local-video");
       const remoteVideo = document.getElementById("remote-video");
@@ -350,15 +352,20 @@
       /* eslint-env browser */
       const joinBtns = document.getElementById("start-btns");
 
-      const signalLocal = new IonSDK.IonSFUJSONRPCSignal(
+      const signalLocal = new Signal.IonSFUJSONRPCSignal(
         "ws://localhost:7000/ws"
       );
-      const signalRemote = new IonSDK.IonSFUJSONRPCSignal(
+      const signalRemote = new Signal.IonSFUJSONRPCSignal(
         "ws://localhost:7000/ws"
       );
 
-      const clientLocal = new IonSDK.Client("test session", signalLocal);
-      const clientRemote = new IonSDK.Client("test session", signalRemote);
+      const clientLocal = new IonSDK.Client(signalLocal);
+      const clientRemote = new IonSDK.Client(signalRemote);
+
+      const session = window.location.hash.toString().replace("#", "") || "test session"
+
+      signalLocal.onopen = () => clientLocal.join(session);
+      signalRemote.onopen = () => clientRemote.join(session);
 
       let localStream;
       const start = (sc) => {

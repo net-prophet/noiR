@@ -22,7 +22,7 @@ type router struct {
 }
 
 func NewRedisRouter(client *redis.Client, mgr *Manager) Router {
-	queue := NewRedisQueue(client, RouterTopic, RouterMaxAge)
+	queue := NewRedisQueue(client, pb.KeyRouterTopic(), RouterMaxAge)
 	return &router{queue, mgr}
 }
 

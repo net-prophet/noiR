@@ -28,6 +28,10 @@ func KeyRoomUsers(roomID string) string {
 
 // Channel Topics
 
+func KeyRouterTopic() string {
+	return "noir/topic/router"
+}
+
 func KeyWorkerTopic(nodeID string) string {
 	return "noir/topic/worker/" + nodeID
 }

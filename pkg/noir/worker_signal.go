@@ -6,23 +6,23 @@ import (
 	pb "github.com/net-prophet/noir/pkg/proto"
 	log "github.com/pion/ion-log"
 	"github.com/pion/ion-sfu/pkg/sfu"
+	"github.com/pion/sdp/v3"
 	"github.com/pion/webrtc/v3"
 )
 
 func (w *worker) HandleSignal(request *pb.NoirRequest) error {
-	signal := request.GetSignal()
 	if request.Action == "request.signal.join" {
-		return w.HandleJoin(signal)
+		return w.HandleJoin(request)
 	}
 	return nil
 }
 
-
-func (w *worker) HandleJoin(signal *pb.SignalRequest) error {
+func (w *worker) HandleJoin(request *pb.NoirRequest) error {
 	w.mu.Lock()
 	defer w.mu.Unlock()
 	mgr := *w.manager
 
+	signal := request.GetSignal()
 	join := signal.GetJoin()
 	pid := signal.Id
 
@@ -105,6 +105,7 @@ func (w *worker) HandleJoin(signal *pb.SignalRequest) error {
 	packed, _ := json.Marshal(answer)
 
 	w.SignalReply(pid, &pb.NoirReply{
+		Id: request.Id,
 		Command: &pb.NoirReply_Signal{
 			Signal: &pb.SignalReply{
 				Id:        pid,
@@ -168,23 +169,32 @@ func (w *worker) PeerChannel(userData *pb.UserData, peer *sfu.Peer) {
 
 					validated, err := w.manager.ValidateOffer(roomData, userData.Id, desc.Desc)
 
-					numTracks := len(validated.MediaDescriptions)
-					if numTracks == 1 && validated.MediaDescriptions[0].MediaName.Media == "application" {
+					A, V, D, summary := TrackSummary(validated)
+
+					roomType := "room"
+
+					// Just one data track
+					if D == 1 && A == 0 && V == 0 {
 						userData.Publishing = false
-					} else if numTracks >= 1 {
+					} else if A > 0 || V > 0 {
 						// Publishing
 						options := roomData.GetOptions()
+
 						if options.GetIsChannel() == true {
+							roomType = "channel"
 							if roomData.GetPublisher() != "" {
 								log.Infof("channel already has a publisher, denying: %s", roomData.Id)
 								continue
+							} else if A > 1 || V > 1 {
+								log.Infof("cannot publish multiple video or audio tracks into channel %s: %s", roomData.Id, summary)
+								continue
 							} else {
-								log.Infof("publishing into channel %s", userData.RoomID)
 								roomData.Publisher = userData.Id
 								SaveRoomData(userData.RoomID, roomData, w.manager)
 							}
 						}
 						userData.Publishing = true
+						log.Infof("publishing [%dA/%dV/%dD] into %s %s: %s", A, V, D, roomType, userData.RoomID, summary)
 					}
 
 					if err != nil {
@@ -194,8 +204,9 @@ func (w *worker) PeerChannel(userData *pb.UserData, peer *sfu.Peer) {
 
 					answer, _ := peer.Answer(desc.Desc)
 					bytes, err := json.Marshal(answer)
-					log.Debugf("got offer, sending reply %s", string(bytes))
+					log.Debugf("got offer %s, sending reply %s", request.Id, summary)
 					w.SignalReply(userData.Id, &pb.NoirReply{
+						Id: request.Id,
 						Command: &pb.NoirReply_Signal{
 							Signal: &pb.SignalReply{
 								Id:        userData.Id,
@@ -228,4 +239,42 @@ func (w *worker) PeerChannel(userData *pb.UserData, peer *sfu.Peer) {
 			log.Errorf("unknown command for peer %s", request.Command)
 		}
 	}
+}
+
+
+func TrackSummary(desc *sdp.SessionDescription) (int, int, int, string) {
+	summary := ""
+	audioTracks, videoTracks, dataTracks := 0, 0, 0
+
+	for _, track := range desc.MediaDescriptions {
+		media := track.MediaName
+		switch media.Media {
+		case "application":
+			dataTracks += 1
+		case "audio":
+			audioTracks += 1
+		case "video":
+			videoTracks += 1
+		}
+
+		if summary != "" {
+			summary += ", "
+		}
+		summary += media.Media + "["
+		fmts := ""
+		if rtpmap, exists := track.Attribute("rtpmap"); exists {
+			summary += rtpmap
+		} else {
+			for _, fmt := range media.Formats {
+				if fmts != "" {
+					fmts += ", "
+				}
+				fmts += fmt
+			}
+			summary += fmts
+		}
+		summary += "]"
+
+	}
+	return audioTracks, videoTracks, dataTracks, summary
 }

@@ -116,20 +116,9 @@ message Trickle {
 
 
 /*
-NOIR OBJECTS - REDIS KEYS:
-
-Workers:
-HSET /noir/obj/worker.health [123] => WorkerHealth
- + Hash is used for worker health so we can HGETALL
-
-SETEX /noir/obj/room.options/{my_room} => RoomOptions
-SETEX /noir/obj/room.health/{my_room} => RoomOptions
- + SETEX is best for rooms so the room is reserved until the key expires
- + health and options keys are separate so that health can quickly be replaced
-
-Peers:
-HSET /noir/obj/room.peers/ => PeerData
-
+NOIR OBJECTS - for storing into redis
+Each object is split into Data (the dynamic metadata) and Options (the user-updated options)
+Eventually, we will store Health for these Objects, in a different key (so overwriting health doesnt change options)
  */
 
 
