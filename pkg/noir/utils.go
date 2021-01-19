@@ -59,14 +59,14 @@ func ReadAction(request *pb.NoirRequest) (string, error) {
 	switch request.Command.(type) {
 	case *pb.NoirRequest_Signal:
 		return ReadSignalAction(request.GetSignal())
-	case *pb.NoirRequest_RoomAdmin:
-		return ReadRoomAdminAction(request.GetRoomAdmin())
+	case *pb.NoirRequest_Admin:
+		return ReadAdminAction(request.GetAdmin())
 	}
 	return "", errors.New("unhandled action")
 }
 
 func ReadSignalAction(signal *pb.SignalRequest) (string, error) {
-	action := "request.signal."
+	action := "request.servers."
 	switch signal.Payload.(type) {
 	case *pb.SignalRequest_Join:
 		return action + "join", nil
@@ -77,18 +77,27 @@ func ReadSignalAction(signal *pb.SignalRequest) (string, error) {
 	case *pb.SignalRequest_Kill:
 		return action + "kill", nil
 	}
-	return action, errors.New("unhandled action")
+	return action, errors.New("unhandled servers")
 }
 
-func ReadRoomAdminAction(signal *pb.RoomAdminRequest) (string, error) {
-	action := "request.roomadmin."
-	switch signal.Payload.(type) {
-	case *pb.RoomAdminRequest_OpenRoom:
-		return action + "openroom", nil
-	case *pb.RoomAdminRequest_PlayFile:
-		return action + "playfile", nil
+func ReadAdminAction(admin *pb.AdminRequest) (string, error) {
+	action := "request.admin."
+	switch admin.Payload.(type) {
+	case *pb.AdminRequest_RoomList:
+		return action + "list_rooms", nil
+	case *pb.AdminRequest_RoomAdmin:
+			roomAdmin := admin.GetRoomAdmin()
+			switch roomAdmin.Method.(type) {
+				case *pb.RoomAdminRequest_CreateRoom:
+					return action + "room.create", nil
+				case *pb.RoomAdminRequest_PlayFile:
+					return action + "room.playfile", nil
+				default:
+					return action, errors.New("unhandled roomadmin")
+			}
+	default:
+		return action, errors.New("unhandled admin")
 	}
-	return action, errors.New("unhandled action")
 }
 
 func FillDefaults(value *pb.NoirRequest) {

@@ -11,7 +11,8 @@ import (
 )
 
 func (w *worker) HandleSignal(request *pb.NoirRequest) error {
-	if request.Action == "request.signal.join" {
+	signal := request.GetSignal()
+	if signal.GetJoin() != nil {
 		return w.HandleJoin(request)
 	}
 	return nil
@@ -101,6 +102,8 @@ func (w *worker) HandleJoin(request *pb.NoirRequest) error {
 	}
 
 	answer, _ := peer.Join(join.Sid, offer)
+
+	w.manager.UpdateRoomScore(join.Sid)
 
 	packed, _ := json.Marshal(answer)
 
@@ -233,7 +236,7 @@ func (w *worker) PeerChannel(userData *pb.UserData, peer *sfu.Peer) {
 				}
 				peer.Trickle(candidate, int(trickle.Target.Number()))
 			default:
-				log.Errorf("unknown signal for peer %s", signal.Payload)
+				log.Errorf("unknown servers for peer %s", signal.Payload)
 			}
 		default:
 			log.Errorf("unknown command for peer %s", request.Command)

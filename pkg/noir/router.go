@@ -5,7 +5,6 @@ import (
 	"github.com/go-redis/redis"
 	pb "github.com/net-prophet/noir/pkg/proto"
 	log "github.com/pion/ion-log"
-	"strings"
 )
 
 type Router interface {
@@ -85,6 +84,8 @@ func (r *router) TargetForSignal(action string, signal *pb.SignalRequest) (strin
 			return "", err
 		}
 
+		log.Infof("room %s lives on node %s", roomID, roomData.NodeID)
+
 		err = r.mgr.ValidateHealthyNodeID(roomData.NodeID)
 
 		if err == nil {
@@ -113,10 +114,11 @@ func (r *router) TargetForSignal(action string, signal *pb.SignalRequest) (strin
 func (r *router) Handle(request *pb.NoirRequest) error {
 	var routeErr error
 	target := ""
-	if strings.HasPrefix(request.Action[:15], "request.signal.") {
+	if request.GetSignal() != nil {
 		target, routeErr = r.TargetForSignal(request.Action, request.GetSignal())
 	} else {
 		// Assign each action to a new worker based on capacity
+		log.Infof("routing: %s", request.Action)
 		target, routeErr = r.mgr.FirstAvailableWorkerID(request.Action)
 	}
 

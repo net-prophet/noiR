@@ -4,7 +4,6 @@ import (
 	"github.com/go-redis/redis"
 	pb "github.com/net-prophet/noir/pkg/proto"
 	log "github.com/pion/ion-log"
-	"strings"
 	"sync"
 	"time"
 )
@@ -85,11 +84,11 @@ func (w *worker) GetQueue() *Queue {
 }
 func (w *worker) Handle(request *pb.NoirRequest) error {
 	log.Debugf("handle %s", request.Action)
-	if strings.HasPrefix(request.Action, "request.signal.") {
+	if request.GetSignal() != nil {
 		return w.HandleSignal(request)
 	}
-	if strings.HasPrefix(request.Action, "request.roomadmin.") {
-		return w.HandleRoomAdmin(request)
+	if request.GetAdmin() != nil {
+		return w.HandleAdmin(request)
 	}
 	return nil
 }

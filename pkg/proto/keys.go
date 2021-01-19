@@ -44,8 +44,21 @@ func KeyTopicFromPeer(peerID string) string {
 	return "noir/topic/client/" + peerID
 }
 
+func KeyTopicToAdmin(clientID string) string {
+	return "noir/topic/to-admin/" + clientID
+}
+
+func KeyTopicFromAdmin(clientID string) string {
+	return "noir/topic/from-admin/" + clientID
+}
+
 // Topic News Channels - PUBLISH when topic has new messages
 
 func KeyPeerNewsChannel(peerID string) string {
 	return "noir/news/peers/" + peerID
+}
+
+// Scores -
+func KeyRoomScores() string {
+	return "noir/scores/rooms"
 }

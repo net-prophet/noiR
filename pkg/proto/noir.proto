@@ -6,12 +6,21 @@ import "google/protobuf/timestamp.proto";
 
 package noir;
 
+/* GRPC ADMIN API */
+message AdminClient {
+    string clientID = 1;
+}
+message Empty {
+}
+
+service Noir {
+    rpc Subscribe(AdminClient) returns (stream NoirReply);
+    rpc Send(NoirRequest) returns (Empty);
+}
+
 /* ****************************************************
     NOIR COMMANDS API
  **************************************************** */
-service NoirSFU {
-    rpc Admin(stream NoirRequest) returns (stream NoirReply) {}
-}
 
 message NoirRequest {
     string id = 1;
@@ -19,8 +28,9 @@ message NoirRequest {
     string action = 3;
     oneof command {
       SignalRequest signal = 4;
-      RoomAdminRequest roomAdmin = 5;
+      AdminRequest admin = 5;
     }
+    string adminID = 6;
 }
 
 message NoirReply {
@@ -28,19 +38,55 @@ message NoirReply {
     string at = 2;
     oneof command {
         SignalReply signal = 3;
-        RoomAdminReply roomAdmin = 4;
+        AdminReply admin = 4;
         string error = 5;
     }
 }
 
 /* ****************************************************
-    Room Admin Commands
+    Admin Commands
  **************************************************** */
+message AdminRequest {
+    oneof payload {
+        RoomAdminRequest roomAdmin = 1;
+        RoomCountRequest roomCount = 2;
+        RoomListRequest roomList = 3;
+    }
+}
+message AdminReply {
+    oneof payload {
+        string error = 1;
+        RoomAdminReply roomAdmin = 2;
+        RoomCountReply roomCount = 3;
+        RoomListReply roomList = 4;
+    }
+}
+
+message RoomCountRequest {
+}
+
+message RoomCountReply {
+    int64 result = 1;
+}
+
+message RoomListRequest {
+}
+
+message RoomListEntry {
+    string id = 1;
+    int64 score = 2;
+}
+
+message RoomListReply {
+    int64 count = 1;
+    repeated RoomListEntry result = 2;
+}
+
 message RoomAdminRequest {
     string roomID = 1;
-    oneof payload {
-        OpenRoomRequest openRoom = 2;
-        PlayFileRequest play_file = 3;
+    oneof method {
+        CreateRoomRequest createRoom = 2;
+        PlayFileRequest playFile = 3;
     }
 }
 
@@ -48,22 +94,28 @@ message RoomAdminReply {
     string roomID = 1;
     oneof payload {
         string error = 2;
+        CreateRoomReply createRoom = 3;
+        PlayFileReply playFile = 4;
     }
 }
 
-message OpenRoomRequest {
+message CreateRoomRequest {
   RoomOptions options = 1;
 }
 
+message CreateRoomReply {
+    RoomOptions options = 2;
+}
+
 message PlayFileRequest {
-    string pid = 1; // peer id will be random if not specified
-    string filename = 2;
+    string filename = 1;
+    string pid = 2; // peer id will be random if not specified
     bool repeat = 3;
 }
 
 message PlayFileReply {
-    string pid = 1; // peer id will be random if not specified
-    string filename = 2;
+    string filename = 1;
+    string pid = 2; // peer id will be random if not specified
     bool repeat = 3;
     bool status = 4;
 }
@@ -157,10 +209,10 @@ message RoomOptions {
 message UserData {
     string id = 1;
     google.protobuf.Timestamp created = 2;
-    google.protobuf.Timestamp lastUpdate = 3;
-    string roomID = 4;
-    UserOptions options = 5;
-    bool publishing = 6;
+    google.protobuf.Timestamp lastUpdate = 4;
+    string roomID = 5;
+    UserOptions options = 6;
+    bool publishing = 7;
 }
 
 message UserOptions {

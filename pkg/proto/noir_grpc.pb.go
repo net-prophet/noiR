@@ -13,45 +13,47 @@ import (
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion7
 
-// NoirSFUClient is the client API for NoirSFU service.
+// NoirClient is the client API for Noir service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
-type NoirSFUClient interface {
-	Admin(ctx context.Context, opts ...grpc.CallOption) (NoirSFU_AdminClient, error)
+type NoirClient interface {
+	Subscribe(ctx context.Context, in *AdminClient, opts ...grpc.CallOption) (Noir_SubscribeClient, error)
+	Send(ctx context.Context, in *NoirRequest, opts ...grpc.CallOption) (*Empty, error)
 }
 
-type noirSFUClient struct {
+type noirClient struct {
 	cc grpc.ClientConnInterface
 }
 
-func NewNoirSFUClient(cc grpc.ClientConnInterface) NoirSFUClient {
-	return &noirSFUClient{cc}
+func NewNoirClient(cc grpc.ClientConnInterface) NoirClient {
+	return &noirClient{cc}
 }
 
-func (c *noirSFUClient) Admin(ctx context.Context, opts ...grpc.CallOption) (NoirSFU_AdminClient, error) {
-	stream, err := c.cc.NewStream(ctx, &NoirSFU_ServiceDesc.Streams[0], "/noir.NoirSFU/Admin", opts...)
+func (c *noirClient) Subscribe(ctx context.Context, in *AdminClient, opts ...grpc.CallOption) (Noir_SubscribeClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Noir_ServiceDesc.Streams[0], "/noir.Noir/Subscribe", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &noirSFUAdminClient{stream}
+	x := &noirSubscribeClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
 	return x, nil
 }
 
-type NoirSFU_AdminClient interface {
-	Send(*NoirRequest) error
+type Noir_SubscribeClient interface {
 	Recv() (*NoirReply, error)
 	grpc.ClientStream
 }
 
-type noirSFUAdminClient struct {
+type noirSubscribeClient struct {
 	grpc.ClientStream
 }
 
-func (x *noirSFUAdminClient) Send(m *NoirRequest) error {
-	return x.ClientStream.SendMsg(m)
-}
-
-func (x *noirSFUAdminClient) Recv() (*NoirReply, error) {
+func (x *noirSubscribeClient) Recv() (*NoirReply, error) {
 	m := new(NoirReply)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -59,73 +61,103 @@ func (x *noirSFUAdminClient) Recv() (*NoirReply, error) {
 	return m, nil
 }
 
-// NoirSFUServer is the server API for NoirSFU service.
-// All implementations must embed UnimplementedNoirSFUServer
+func (c *noirClient) Send(ctx context.Context, in *NoirRequest, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
+	err := c.cc.Invoke(ctx, "/noir.Noir/Send", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// NoirServer is the server API for Noir service.
+// All implementations must embed UnimplementedNoirServer
 // for forward compatibility
-type NoirSFUServer interface {
-	Admin(NoirSFU_AdminServer) error
-	mustEmbedUnimplementedNoirSFUServer()
+type NoirServer interface {
+	Subscribe(*AdminClient, Noir_SubscribeServer) error
+	Send(context.Context, *NoirRequest) (*Empty, error)
+	mustEmbedUnimplementedNoirServer()
 }
 
-// UnimplementedNoirSFUServer must be embedded to have forward compatible implementations.
-type UnimplementedNoirSFUServer struct {
+// UnimplementedNoirServer must be embedded to have forward compatible implementations.
+type UnimplementedNoirServer struct {
 }
 
-func (UnimplementedNoirSFUServer) Admin(NoirSFU_AdminServer) error {
-	return status.Errorf(codes.Unimplemented, "method Admin not implemented")
+func (UnimplementedNoirServer) Subscribe(*AdminClient, Noir_SubscribeServer) error {
+	return status.Errorf(codes.Unimplemented, "method Subscribe not implemented")
 }
-func (UnimplementedNoirSFUServer) mustEmbedUnimplementedNoirSFUServer() {}
+func (UnimplementedNoirServer) Send(context.Context, *NoirRequest) (*Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Send not implemented")
+}
+func (UnimplementedNoirServer) mustEmbedUnimplementedNoirServer() {}
 
-// UnsafeNoirSFUServer may be embedded to opt out of forward compatibility for this service.
-// Use of this interface is not recommended, as added methods to NoirSFUServer will
+// UnsafeNoirServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to NoirServer will
 // result in compilation errors.
-type UnsafeNoirSFUServer interface {
-	mustEmbedUnimplementedNoirSFUServer()
+type UnsafeNoirServer interface {
+	mustEmbedUnimplementedNoirServer()
 }
 
-func RegisterNoirSFUServer(s grpc.ServiceRegistrar, srv NoirSFUServer) {
-	s.RegisterService(&NoirSFU_ServiceDesc, srv)
+func RegisterNoirServer(s grpc.ServiceRegistrar, srv NoirServer) {
+	s.RegisterService(&Noir_ServiceDesc, srv)
 }
 
-func _NoirSFU_Admin_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(NoirSFUServer).Admin(&noirSFUAdminServer{stream})
+func _Noir_Subscribe_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(AdminClient)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(NoirServer).Subscribe(m, &noirSubscribeServer{stream})
 }
 
-type NoirSFU_AdminServer interface {
+type Noir_SubscribeServer interface {
 	Send(*NoirReply) error
-	Recv() (*NoirRequest, error)
 	grpc.ServerStream
 }
 
-type noirSFUAdminServer struct {
+type noirSubscribeServer struct {
 	grpc.ServerStream
 }
 
-func (x *noirSFUAdminServer) Send(m *NoirReply) error {
+func (x *noirSubscribeServer) Send(m *NoirReply) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *noirSFUAdminServer) Recv() (*NoirRequest, error) {
-	m := new(NoirRequest)
-	if err := x.ServerStream.RecvMsg(m); err != nil {
+func _Noir_Send_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(NoirRequest)
+	if err := dec(in); err != nil {
 		return nil, err
 	}
-	return m, nil
+	if interceptor == nil {
+		return srv.(NoirServer).Send(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/noir.Noir/Send",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NoirServer).Send(ctx, req.(*NoirRequest))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-// NoirSFU_ServiceDesc is the grpc.ServiceDesc for NoirSFU service.
+// Noir_ServiceDesc is the grpc.ServiceDesc for Noir service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
-var NoirSFU_ServiceDesc = grpc.ServiceDesc{
-	ServiceName: "noir.NoirSFU",
-	HandlerType: (*NoirSFUServer)(nil),
-	Methods:     []grpc.MethodDesc{},
+var Noir_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "noir.Noir",
+	HandlerType: (*NoirServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Send",
+			Handler:    _Noir_Send_Handler,
+		},
+	},
 	Streams: []grpc.StreamDesc{
 		{
-			StreamName:    "Admin",
-			Handler:       _NoirSFU_Admin_Handler,
+			StreamName:    "Subscribe",
+			Handler:       _Noir_Subscribe_Handler,
 			ServerStreams: true,
-			ClientStreams: true,
 		},
 	},
 	Metadata: "pkg/proto/noir.proto",

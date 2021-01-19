@@ -6,7 +6,7 @@ import (
 	"flag"
 	"fmt"
 	noir "github.com/net-prophet/noir/pkg/noir"
-	"github.com/net-prophet/noir/pkg/noir/signal"
+	"github.com/net-prophet/noir/pkg/noir/servers"
 	"net/http"
 	"os"
 
@@ -135,23 +135,21 @@ func main() {
 	defer mgr.Cleanup()
 
 	if publicJrpcAddr != "" {
-		go signal.PublicJSONRPC(&mgr, publicJrpcAddr, key, cert)
+		go servers.PublicJSONRPC(&mgr, publicJrpcAddr, key, cert)
 	}
 	if adminJrpcAddr != "" {
-		go signal.AdminJSONRPC(&mgr, adminJrpcAddr)
+		go servers.AdminJSONRPC(&mgr, adminJrpcAddr, key, cert)
 	}
 	if grpcAddr != "" {
-		go signal.AdminGRPC(&SFU, grpcAddr)
+		go servers.AdminGRPC(&mgr, grpcAddr)
 	}
 
 	if demoAddr != "" {
-
 		log.Infof("demo http server running at %s", demoAddr)
 		fs := http.FileServer(http.Dir("demo/"))
 		http.Handle("/", fs)
-		http.ListenAndServe(demoAddr, nil)
+		go http.ListenAndServe(demoAddr, nil)
 	}
-
 	for {
 	}
 

@@ -67,7 +67,7 @@ func TestRouterReadAction(t *testing.T) {
 					},
 				},
 			},
-		}, "request.signal.join"},
+		}, "request.servers.join"},
 	}
 
 	for _, tt := range tests {

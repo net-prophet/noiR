@@ -14,6 +14,7 @@ import (
 	"math/rand"
 	"os"
 	"os/signal"
+	"strconv"
 	"sync"
 	"syscall"
 	"time"
@@ -21,7 +22,7 @@ import (
 
 const (
 	ManagerPingFrequency = 10 * time.Second
-	QueueMessageTimeout = 25 * time.Second
+	QueueMessageTimeout  = 25 * time.Second
 )
 
 type Manager struct {
@@ -51,7 +52,6 @@ func SetupNoir(sfu *NoirSFU, client *redis.Client, nodeID string) Manager {
 	return manager
 }
 
-
 func NewRedisManager(provider *NoirSFU, client *redis.Client, nodeID string) Manager {
 	manager := Manager{redis: client,
 		workers: make(map[string]pb.NodeData),
@@ -66,7 +66,7 @@ func NewRedisManager(provider *NoirSFU, client *redis.Client, nodeID string) Man
 
 // The Noir thread launches the worker and router, and then
 // handles ticker tasks (update cluster health, print status)
-// and watches for the quit signal to cleanup
+// and watches for the quit servers to cleanup
 func (m *Manager) Noir() {
 	if m.worker == nil || m.router == nil {
 		panic("Manager not initialized")
@@ -76,11 +76,11 @@ func (m *Manager) Noir() {
 	checkin := time.NewTicker(15 * time.Second)
 	quit := make(chan os.Signal)
 	signal.Notify(quit, os.Interrupt, syscall.SIGTERM)
-	if err := m.Checkin() ; err != nil {
+	if err := m.Checkin(); err != nil {
 		panic("unable to checkin node as healthy")
 	}
 
-	if err := m.UpdateAvailableNodes() ; err != nil {
+	if err := m.UpdateAvailableNodes(); err != nil {
 		panic("unable to retrieve cluster status")
 	}
 
@@ -90,11 +90,11 @@ func (m *Manager) Noir() {
 	for {
 		select {
 		case <-checkin.C:
-			if err := m.Checkin() ; err != nil {
+			if err := m.Checkin(); err != nil {
 				panic("unable to checkin node as healthy")
 			}
 		case <-updateNodes.C:
-			if err := m.UpdateAvailableNodes() ; err != nil {
+			if err := m.UpdateAvailableNodes(); err != nil {
 				panic("unable to retrieve cluster status")
 			}
 			if len(m.workers) == 0 {
@@ -131,15 +131,11 @@ func (m *Manager) CloseRoom(roomID string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	delete(m.rooms, roomID)
+	m.redis.ZRem(pb.KeyRoomScores(), roomID)
 }
 
 func (m *Manager) DisconnectUser(userID string) {
-	userData, _ := m.GetRemoteUserData(userID)
-
-	if userData.Options.MaxAgeSeconds == -1 {
-		defer m.redis.Del(pb.KeyUserData(userID))
-	}
-	defer m.redis.HDel(pb.KeyRoomUsers(userData.RoomID), userID)
+	userData, err := m.GetRemoteUserData(userID)
 
 	// Cleanup the SFU peer
 	client := m.users[userID]
@@ -147,9 +143,21 @@ func (m *Manager) DisconnectUser(userID string) {
 		client.Close()
 	}
 
+	if userData != nil && err == nil {
+
+		if userData.Options.MaxAgeSeconds == -1 {
+			defer m.redis.Del(pb.KeyUserData(userID))
+		}
+
+		defer m.redis.HDel(pb.KeyRoomUsers(userData.RoomID), userID)
+
+		m.UpdateRoomScore(userData.RoomID)
+	}
+
 	// Send Kill to the Peer Queues
 	toPeerQueue := m.GetQueue(pb.KeyTopicToPeer(userID))
 	fromPeerQueue := m.GetQueue(pb.KeyTopicFromPeer(userID))
+
 	EnqueueRequest(toPeerQueue, &pb.NoirRequest{
 		Command: &pb.NoirRequest_Signal{
 			Signal: &pb.SignalRequest{
@@ -199,10 +207,11 @@ func (m *Manager) ConnectUser(signal *pb.SignalRequest) (*sfu.Peer, *pb.UserData
 		return nil, nil, errors.New(fmt.Sprintf("unable to ensure room %s: %s", join.Sid, err))
 	}
 	desc, err := ParseSDP(offer)
-	numTracks := len(desc.MediaDescriptions)
 	if err != nil {
 		return nil, nil, err
 	}
+
+	numTracks := len(desc.MediaDescriptions)
 
 	var publishing bool
 
@@ -229,7 +238,25 @@ func (m *Manager) ConnectUser(signal *pb.SignalRequest) (*sfu.Peer, *pb.UserData
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	m.users[pid] = peer
+
+	m.UpdateRoomScore(join.Sid)
+
 	return peer, userData, nil
+}
+
+func (m *Manager) UpdateRoomScore(roomID string) {
+	if room, ok := m.rooms[roomID] ; ok {
+		score := float64(len(room.session.Peers()))
+		if score > 0 {
+			m.redis.ZAdd(pb.KeyRoomScores(), redis.Z{
+				Score:  score,
+				Member: roomID,
+			})
+		} else {
+			m.redis.ZRem(pb.KeyRoomScores(), roomID)
+		}
+	} else {
+	}
 }
 
 func (m *Manager) GetQueue(topic string) Queue {
@@ -341,7 +368,6 @@ func (m *Manager) UpdateAvailableNodes() error {
 		}
 		remote := decode.GetNode()
 
-
 		if !ValidateHealthy(remote) && remote.Id != m.worker.ID() {
 			log.Warnf("haven't heard from %s; marking it offline", remote.Id)
 			m.MarkOffline(remote.Id)
@@ -398,7 +424,7 @@ func (m *Manager) GetRemoteRoomData(roomID string) (*pb.RoomData, error) {
 func (m *Manager) ClaimRoomNode(roomID string, nodeID string) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if exists, _ := m.GetRemoteRoomExists(roomID) ; exists == false {
+	if exists, _ := m.GetRemoteRoomExists(roomID); exists == false {
 		room := NewRoom(roomID) // Just used for the data
 		data := &room.data
 		data.NodeID = m.id
@@ -409,7 +435,7 @@ func (m *Manager) ClaimRoomNode(roomID string, nodeID string) (bool, error) {
 	} else {
 		data, err := m.GetRemoteRoomData(roomID)
 		if err == nil && data.NodeID != "" {
-			if _, alive := m.workers[data.NodeID] ; alive {
+			if _, alive := m.workers[data.NodeID]; alive {
 				log.Warnf("tried claiming busy room")
 				return false, nil
 			}
@@ -475,18 +501,25 @@ func (m *Manager) MarkOffline(nodeID string) {
 	m.redis.HDel(pb.KeyNodeMap(), nodeID)
 }
 
-func (m *Manager) OpenRoomFromRequest(admin *pb.RoomAdminRequest) error {
-	_, err := m.GetRemoteRoomData(admin.RoomID)
-	if err == nil {
-		return errors.New("room already exists") // Room exists
-	}
-	openRoom := admin.GetOpenRoom()
+func (m *Manager) CountMatchingKeys(pattern string) (int64, error) {
+	CountMatching := redis.NewScript(`
+		local result = redis.call('SCAN', ARGV[1], 'MATCH', ARGV[2], 'COUNT', 1000)
+        result[2] = #result[2]
+        return result
+	`)
 
-	log.Infof("creating room %s", admin.RoomID)
-	room := NewRoom(admin.RoomID)
-	room.SetOptions(openRoom.GetOptions())
-	SaveRoomData(admin.RoomID, &room.data, m)
-	return nil
+	output, err := CountMatching.Run(m.redis, []string{}, []string{"0", pattern}).Result()
+	result := output.([]string)
+
+	if err != nil {
+		return 0, err
+	}
+	sum := int64(0)
+	for result[0] != "0" {
+		add, _ := strconv.Atoi(result[1])
+		sum += int64(add)
+	}
+	return sum, nil
 }
 
 func (m *Manager) CreateRoomIfNotExists(roomID string) (*pb.RoomData, error) {
@@ -527,7 +560,7 @@ func (m *Manager) ValidateOffer(room *pb.RoomData, userID string, offer webrtc.S
 func (m *Manager) GetRemoteUserData(userID string) (*pb.UserData, error) {
 	loaded, err := m.LoadData(pb.KeyUserData(userID))
 	if err != nil {
-		log.Errorf("error loading room data! %s", err)
+		log.Errorf("error loading user#%s data! %s", userID, err)
 		return nil, err
 	}
 	return loaded.GetUser(), nil
@@ -573,14 +606,14 @@ func ParseSDP(offer webrtc.SessionDescription) (*sdp.SessionDescription, error) 
 	}
 	numTracks := len(desc.MediaDescriptions)
 
-	if numTracks == 0 || desc.MediaDescriptions[0].MediaName.Media != "application" {
-		return nil, errors.New("first track must be an empty datachannel")
+	if numTracks == 0 {
+		return nil, errors.New("offer must include at least an empty datachannel")
 	}
 	return desc, nil
 }
 
 func ValidateHealthy(node *pb.NodeData) bool {
 	age := time.Now().Sub(node.GetLastUpdate().AsTime())
-	healthyWindow := 2*ManagerPingFrequency
+	healthyWindow := 2 * ManagerPingFrequency
 	return age < healthyWindow
 }

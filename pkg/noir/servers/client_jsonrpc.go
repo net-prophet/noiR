@@ -1,4 +1,4 @@
-package signal
+package servers
 
 import (
 	"context"
@@ -225,10 +225,10 @@ func (s *clientJSONRPCBridge) Listen(ctx context.Context, conn *jsonrpc2.Conn, r
 				})
 				//log.Debugf("trickle %s", trickle)
 			default:
-				log.Errorf("unknown signal reply %s", signal)
+				log.Errorf("unknown servers reply %s", signal)
 			}
 		default:
-			log.Warnf("non-signal reply on client channel %s", &reply)
+			log.Warnf("non-servers reply on client channel %s", &reply)
 		}
 	}
 }

@@ -27,6 +27,9 @@ clean:
 build: go_init protos
 	go build -o bin/noir $(GO_LDFLAGS) ./cmd/noir/main.go
 
+ssl: redis
+	go run ./cmd/noir/main.go -c ./config.toml -g :50051 -d :7070 -a :8443 -j :7000 --cert ./cert.pem --key ./cert-key.pem
+
 run: redis
 	echo "Running local demo: http://localhost:7070"
 	go run ./cmd/noir/main.go -c ./config.toml -d :7070 -j :7000
