@@ -32,7 +32,7 @@ ssl: redis
 
 run: redis
 	echo "Running local demo: http://localhost:7070"
-	go run ./cmd/noir/main.go -c ./config.toml -d :7070 -j :7000
+	go run ./cmd/noir/main.go -c ./config.toml -g :50051 -w :50052 -d :7070 -a :7777 -j :7000
 
 run_second:
 	echo "Running second demo: http://localhost:7071"
