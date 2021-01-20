@@ -19,6 +19,8 @@ const _ = grpc.SupportPackageIsVersion7
 type NoirClient interface {
 	Subscribe(ctx context.Context, in *AdminClient, opts ...grpc.CallOption) (Noir_SubscribeClient, error)
 	Send(ctx context.Context, in *NoirRequest, opts ...grpc.CallOption) (*Empty, error)
+	Admin(ctx context.Context, opts ...grpc.CallOption) (Noir_AdminClient, error)
+	Signal(ctx context.Context, opts ...grpc.CallOption) (Noir_SignalClient, error)
 }
 
 type noirClient struct {
@@ -70,12 +72,76 @@ func (c *noirClient) Send(ctx context.Context, in *NoirRequest, opts ...grpc.Cal
 	return out, nil
 }
 
+func (c *noirClient) Admin(ctx context.Context, opts ...grpc.CallOption) (Noir_AdminClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Noir_ServiceDesc.Streams[1], "/noir.Noir/Admin", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &noirAdminClient{stream}
+	return x, nil
+}
+
+type Noir_AdminClient interface {
+	Send(*NoirRequest) error
+	Recv() (*NoirReply, error)
+	grpc.ClientStream
+}
+
+type noirAdminClient struct {
+	grpc.ClientStream
+}
+
+func (x *noirAdminClient) Send(m *NoirRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *noirAdminClient) Recv() (*NoirReply, error) {
+	m := new(NoirReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (c *noirClient) Signal(ctx context.Context, opts ...grpc.CallOption) (Noir_SignalClient, error) {
+	stream, err := c.cc.NewStream(ctx, &Noir_ServiceDesc.Streams[2], "/noir.Noir/Signal", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &noirSignalClient{stream}
+	return x, nil
+}
+
+type Noir_SignalClient interface {
+	Send(*SignalRequest) error
+	Recv() (*SignalReply, error)
+	grpc.ClientStream
+}
+
+type noirSignalClient struct {
+	grpc.ClientStream
+}
+
+func (x *noirSignalClient) Send(m *SignalRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *noirSignalClient) Recv() (*SignalReply, error) {
+	m := new(SignalReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // NoirServer is the server API for Noir service.
 // All implementations must embed UnimplementedNoirServer
 // for forward compatibility
 type NoirServer interface {
 	Subscribe(*AdminClient, Noir_SubscribeServer) error
 	Send(context.Context, *NoirRequest) (*Empty, error)
+	Admin(Noir_AdminServer) error
+	Signal(Noir_SignalServer) error
 	mustEmbedUnimplementedNoirServer()
 }
 
@@ -88,6 +154,12 @@ func (UnimplementedNoirServer) Subscribe(*AdminClient, Noir_SubscribeServer) err
 }
 func (UnimplementedNoirServer) Send(context.Context, *NoirRequest) (*Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Send not implemented")
+}
+func (UnimplementedNoirServer) Admin(Noir_AdminServer) error {
+	return status.Errorf(codes.Unimplemented, "method Admin not implemented")
+}
+func (UnimplementedNoirServer) Signal(Noir_SignalServer) error {
+	return status.Errorf(codes.Unimplemented, "method Signal not implemented")
 }
 func (UnimplementedNoirServer) mustEmbedUnimplementedNoirServer() {}
 
@@ -141,6 +213,58 @@ func _Noir_Send_Handler(srv interface{}, ctx context.Context, dec func(interface
 	return interceptor(ctx, in, info, handler)
 }
 
+func _Noir_Admin_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(NoirServer).Admin(&noirAdminServer{stream})
+}
+
+type Noir_AdminServer interface {
+	Send(*NoirReply) error
+	Recv() (*NoirRequest, error)
+	grpc.ServerStream
+}
+
+type noirAdminServer struct {
+	grpc.ServerStream
+}
+
+func (x *noirAdminServer) Send(m *NoirReply) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *noirAdminServer) Recv() (*NoirRequest, error) {
+	m := new(NoirRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func _Noir_Signal_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(NoirServer).Signal(&noirSignalServer{stream})
+}
+
+type Noir_SignalServer interface {
+	Send(*SignalReply) error
+	Recv() (*SignalRequest, error)
+	grpc.ServerStream
+}
+
+type noirSignalServer struct {
+	grpc.ServerStream
+}
+
+func (x *noirSignalServer) Send(m *SignalReply) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *noirSignalServer) Recv() (*SignalRequest, error) {
+	m := new(SignalRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
 // Noir_ServiceDesc is the grpc.ServiceDesc for Noir service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -158,6 +282,136 @@ var Noir_ServiceDesc = grpc.ServiceDesc{
 			StreamName:    "Subscribe",
 			Handler:       _Noir_Subscribe_Handler,
 			ServerStreams: true,
+		},
+		{
+			StreamName:    "Admin",
+			Handler:       _Noir_Admin_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+		{
+			StreamName:    "Signal",
+			Handler:       _Noir_Signal_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
+		},
+	},
+	Metadata: "pkg/proto/noir.proto",
+}
+
+// SFUClient is the client API for SFU service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type SFUClient interface {
+	Signal(ctx context.Context, opts ...grpc.CallOption) (SFU_SignalClient, error)
+}
+
+type sFUClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewSFUClient(cc grpc.ClientConnInterface) SFUClient {
+	return &sFUClient{cc}
+}
+
+func (c *sFUClient) Signal(ctx context.Context, opts ...grpc.CallOption) (SFU_SignalClient, error) {
+	stream, err := c.cc.NewStream(ctx, &SFU_ServiceDesc.Streams[0], "/noir.SFU/Signal", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &sFUSignalClient{stream}
+	return x, nil
+}
+
+type SFU_SignalClient interface {
+	Send(*SignalRequest) error
+	Recv() (*SignalReply, error)
+	grpc.ClientStream
+}
+
+type sFUSignalClient struct {
+	grpc.ClientStream
+}
+
+func (x *sFUSignalClient) Send(m *SignalRequest) error {
+	return x.ClientStream.SendMsg(m)
+}
+
+func (x *sFUSignalClient) Recv() (*SignalReply, error) {
+	m := new(SignalReply)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+// SFUServer is the server API for SFU service.
+// All implementations must embed UnimplementedSFUServer
+// for forward compatibility
+type SFUServer interface {
+	Signal(SFU_SignalServer) error
+	mustEmbedUnimplementedSFUServer()
+}
+
+// UnimplementedSFUServer must be embedded to have forward compatible implementations.
+type UnimplementedSFUServer struct {
+}
+
+func (UnimplementedSFUServer) Signal(SFU_SignalServer) error {
+	return status.Errorf(codes.Unimplemented, "method Signal not implemented")
+}
+func (UnimplementedSFUServer) mustEmbedUnimplementedSFUServer() {}
+
+// UnsafeSFUServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to SFUServer will
+// result in compilation errors.
+type UnsafeSFUServer interface {
+	mustEmbedUnimplementedSFUServer()
+}
+
+func RegisterSFUServer(s grpc.ServiceRegistrar, srv SFUServer) {
+	s.RegisterService(&SFU_ServiceDesc, srv)
+}
+
+func _SFU_Signal_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(SFUServer).Signal(&sFUSignalServer{stream})
+}
+
+type SFU_SignalServer interface {
+	Send(*SignalReply) error
+	Recv() (*SignalRequest, error)
+	grpc.ServerStream
+}
+
+type sFUSignalServer struct {
+	grpc.ServerStream
+}
+
+func (x *sFUSignalServer) Send(m *SignalReply) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *sFUSignalServer) Recv() (*SignalRequest, error) {
+	m := new(SignalRequest)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+// SFU_ServiceDesc is the grpc.ServiceDesc for SFU service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var SFU_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "noir.SFU",
+	HandlerType: (*SFUServer)(nil),
+	Methods:     []grpc.MethodDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Signal",
+			Handler:       _SFU_Signal_Handler,
+			ServerStreams: true,
+			ClientStreams: true,
 		},
 	},
 	Metadata: "pkg/proto/noir.proto",

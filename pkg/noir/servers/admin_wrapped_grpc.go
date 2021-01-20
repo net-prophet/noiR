@@ -28,11 +28,6 @@ type WrapperedServerOptions struct {
 	WebsocketPingInterval time.Duration
 }
 
-type SFUServer struct {
-	pb.UnimplementedNoirServer
-	manager *noir.Manager
-}
-
 func DefaultWrapperedServerOptions() WrapperedServerOptions {
 	return WrapperedServerOptions{
 		Addr:                  ":9090",

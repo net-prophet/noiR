@@ -27,6 +27,7 @@ var (
 	key            string
 	publicJrpcAddr string
 	adminJrpcAddr  string
+	webGrpcAddr    string
 	SFU            noir.NoirSFU
 )
 
@@ -41,7 +42,8 @@ func showHelp() {
 	fmt.Println("      -d {demo http addr}")
 	fmt.Println("      -j {public jsonrpc addr}")
 	fmt.Println("      -a {admin jsonrpc addr}")
-	fmt.Println("      -g {admin grpc addr}")
+	fmt.Println("      -g {admin-grpc addr}")
+	fmt.Println("      -w {web admin-grpc addr}")
 	fmt.Println("      -h (show help info)")
 }
 
@@ -85,6 +87,7 @@ func parse() bool {
 	flag.StringVar(&demoAddr, "d", "", "http addr to listen for demo")
 	flag.StringVar(&publicJrpcAddr, "j", "", "jsonrpc addr for public")
 	flag.StringVar(&adminJrpcAddr, "a", "", "jsonrpc addr for admin")
+	flag.StringVar(&webGrpcAddr, "w", "", "web grpc addr for admin")
 	flag.StringVar(&grpcAddr, "g", "", "grpc addr for admin")
 	flag.StringVar(&cert, "cert", "", "public jsonrpc https cert file")
 	flag.StringVar(&key, "key", "", "public jsonrpc https key file")
@@ -142,6 +145,10 @@ func main() {
 	}
 	if grpcAddr != "" {
 		go servers.AdminGRPC(&mgr, grpcAddr)
+	}
+
+	if webGrpcAddr != "" {
+		go servers.AdminGRPCWeb(&mgr, webGrpcAddr)
 	}
 
 	if demoAddr != "" {

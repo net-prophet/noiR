@@ -16,6 +16,13 @@ message Empty {
 service Noir {
     rpc Subscribe(AdminClient) returns (stream NoirReply);
     rpc Send(NoirRequest) returns (Empty);
+    rpc Admin(stream NoirRequest) returns (stream NoirReply);
+    rpc Signal(stream SignalRequest) returns (stream SignalReply) {}
+}
+
+/* ION COMPATABILITY SERVICE */
+service SFU {
+    rpc Signal(stream SignalRequest) returns (stream SignalReply) {}
 }
 
 /* ****************************************************

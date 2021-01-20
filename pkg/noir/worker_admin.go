@@ -40,7 +40,7 @@ func (w *worker) HandleAdmin(request *pb.NoirRequest) error {
 				Min:    "0",
 				Max:    "+inf",
 				Offset: 0,
-				Count:  100,
+				Count:  10,
 			}).Val() {
 			rooms = append(rooms, &pb.RoomListEntry{
 				Id:    z.Member.(string),

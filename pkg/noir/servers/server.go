@@ -105,22 +105,28 @@ func AdminJSONRPC(mgr *noir.Manager, adminJrpcAddr string, key string, cert stri
 }
 
 func AdminGRPC(m *noir.Manager, grpcAddr string) {
-
-    /*
-	options := DefaultWrapperedServerOptions()
-	options.EnableTLS = false
-	options.Addr = grpcAddr
-	options.AllowAllOrigins = true
-	options.UseWebSocket = true
-	s := NewWrapperedGRPCWebServer(options, m)
-     */
-
 	lis, _ := net.Listen("tcp", grpcAddr)
-	s := NewGRPCServer(m)
+	grpc := NewGRPCServer(m)
 
-	if err := s.Serve(lis); err != nil {
+	log.Infof("grpc listening at %s", grpcAddr)
+
+	if err := grpc.Serve(lis); err != nil {
 		log.Panicf("failed to serve: %v", err)
 	}
-	log.Infof("listening at %s", grpcAddr)
+	select {}
+}
+
+func AdminGRPCWeb(m *noir.Manager, webAddr string) {
+	options := DefaultWrapperedServerOptions()
+	options.EnableTLS = false
+	options.Addr = webAddr
+	options.AllowAllOrigins = true
+	options.UseWebSocket = true
+	web := NewWrapperedGRPCWebServer(options, m)
+	// serve() prints more info than this itself
+	//log.Infof("grpc-web listening at %s", webAddr)
+	if err := web.Serve(); err != nil {
+		log.Panicf("failed to serve: %v", err)
+	}
 	select {}
 }
