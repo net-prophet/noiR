@@ -3,8 +3,8 @@ package noir
 import (
 	"github.com/net-prophet/noir/pkg/proto"
 	log "github.com/pion/ion-log"
+	//"github.com/pion/ion-sfu/pkg/middlewares/datachannel"
 	"math/rand"
-	"runtime"
 	"sync"
 	"time"
 
@@ -16,12 +16,14 @@ var (
 )
 
 type noirSFU struct {
-	webrtc   sfu.WebRTCTransportConfig
-	router   sfu.RouterConfig
-	mu       sync.RWMutex
-	sessions map[string]*sfu.Session
-	nodeID   string
-	manager  *Manager
+	sfu.SFU
+	webrtc       sfu.WebRTCTransportConfig
+	router       sfu.RouterConfig
+	mu           sync.RWMutex
+	sessions     map[string]*sfu.Session
+	//datachannels []*sfu.Datachannel
+	nodeID       string
+	manager      *Manager
 }
 
 type NoirSFU interface {
@@ -33,14 +35,15 @@ type NoirSFU interface {
 func NewNoirSFU(c Config) NoirSFU {
 	rand.Seed(time.Now().UnixNano())
 	id := RandomString(8)
-	// Init ballast
-	ballast := make([]byte, c.Ion.SFU.Ballast*1024*1024)
 
 	w := sfu.NewWebRTCTransportConfig(c.Ion)
 
-	runtime.KeepAlive(ballast)
+	ion := sfu.NewSFU(c.Ion)
+	//dc := ion.NewDatachannel(sfu.APIChannelLabel)
+	//dc.Use(datachannel.SubscriberAPI)
 
 	return &noirSFU{
+		SFU:      *ion,
 		webrtc:   w,
 		sessions: make(map[string]*sfu.Session),
 		nodeID:   id,
@@ -60,7 +63,6 @@ func (s *noirSFU) ensureSession(sessionID string) *sfu.Session {
 		return s
 	}
 
-
 	log.Infof("creating session %s", sessionID)
 	mgr := *s.manager
 
@@ -71,6 +73,7 @@ func (s *noirSFU) ensureSession(sessionID string) *sfu.Session {
 	session.OnClose(func() {
 		log.Infof("closing session %s", sessionID)
 		room, err := mgr.GetRemoteRoomData(sessionID)
+		defer mgr.UpdateRoomScore(sessionID)
 
 		if room != nil && err == nil {
 			if room.Options.MaxAgeSeconds == -1 {

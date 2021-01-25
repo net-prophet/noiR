@@ -17,6 +17,7 @@ const (
 type Worker interface {
 	HandleForever()
 	HandleNext(timeout time.Duration) error
+	RegisterHandler(name string, handler JobHandler)
 	GetQueue() *Queue
 	ID() string
 }
@@ -24,22 +25,25 @@ type Worker interface {
 // worker runs 2 go threads -- Router() takes incoming router messages and loadbalances
 // commands across commands queues on nodes while CommandRunner() runs commands on this node's queue
 type worker struct {
-	id      string
-	manager *Manager
-	queue   Queue
-	mu      sync.RWMutex
+	id          string
+	manager     *Manager
+	jobHandlers map[string]JobHandler
+	queue       Queue
+	mu          sync.RWMutex
 }
+
+type JobHandler func(request *pb.NoirRequest) RunnableJob
 
 func NewRedisWorkerQueue(client *redis.Client, id string) Queue {
 	return NewRedisQueue(client, pb.KeyWorkerTopic(id), RouterMaxAge)
 }
 
 func NewRedisWorker(id string, manager *Manager, client *redis.Client) Worker {
-	return &worker{id: id, manager: manager, queue: NewRedisWorkerQueue(client, id)}
+	return &worker{id: id, manager: manager, queue: NewRedisWorkerQueue(client, id), jobHandlers: map[string]JobHandler{}}
 }
 
 func NewWorker(id string, manager *Manager, queue Queue) Worker {
-	return &worker{id: id, manager: manager, queue: queue}
+	return &worker{id: id, manager: manager, queue: queue, jobHandlers: map[string]JobHandler{}}
 }
 
 func (w *worker) HandleForever() {
@@ -58,6 +62,11 @@ func (w *worker) HandleNext(timeout time.Duration) error {
 		return err
 	}
 	return w.Handle(request)
+}
+
+func (w *worker) RegisterHandler(name string, handler JobHandler) {
+	log.Debugf("register job handler: %s", name)
+	w.jobHandlers[name] = handler
 }
 
 func (w *worker) NextCommand(timeout time.Duration) (*pb.NoirRequest, error) {

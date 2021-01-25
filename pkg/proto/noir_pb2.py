@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=b'Z%github.com/net-prophet/noir/pkg/proto',
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x14pkg/proto/noir.proto\x12\x04noir\x1a\x1fgoogle/protobuf/timestamp.proto\"\x1f\n\x0b\x41\x64minClient\x12\x10\n\x08\x63lientID\x18\x01 \x01(\t\"\x07\n\x05\x45mpty\"\x9d\x01\n\x0bNoirRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\n\n\x02\x61t\x18\x02 \x01(\t\x12\x0e\n\x06\x61\x63tion\x18\x03 \x01(\t\x12%\n\x06signal\x18\x04 \x01(\x0b\x32\x13.noir.SignalRequestH\x00\x12#\n\x05\x61\x64min\x18\x05 \x01(\x0b\x32\x12.noir.AdminRequestH\x00\x12\x0f\n\x07\x61\x64minID\x18\x06 \x01(\tB\t\n\x07\x63ommand\"\x87\x01\n\tNoirReply\x12\n\n\x02id\x18\x01 \x01(\t\x12\n\n\x02\x61t\x18\x02 \x01(\t\x12#\n\x06signal\x18\x03 \x01(\x0b\x32\x11.noir.SignalReplyH\x00\x12!\n\x05\x61\x64min\x18\x04 \x01(\x0b\x32\x10.noir.AdminReplyH\x00\x12\x0f\n\x05\x65rror\x18\x05 \x01(\tH\x00\x42\t\n\x07\x63ommand\"\x9e\x01\n\x0c\x41\x64minRequest\x12+\n\troomAdmin\x18\x01 \x01(\x0b\x32\x16.noir.RoomAdminRequestH\x00\x12+\n\troomCount\x18\x02 \x01(\x0b\x32\x16.noir.RoomCountRequestH\x00\x12)\n\x08roomList\x18\x03 \x01(\x0b\x32\x15.noir.RoomListRequestH\x00\x42\t\n\x07payload\"\xa7\x01\n\nAdminReply\x12\x0f\n\x05\x65rror\x18\x01 \x01(\tH\x00\x12)\n\troomAdmin\x18\x02 \x01(\x0b\x32\x14.noir.RoomAdminReplyH\x00\x12)\n\troomCount\x18\x03 \x01(\x0b\x32\x14.noir.RoomCountReplyH\x00\x12\'\n\x08roomList\x18\x04 \x01(\x0b\x32\x13.noir.RoomListReplyH\x00\x42\t\n\x07payload\"\x12\n\x10RoomCountRequest\" \n\x0eRoomCountReply\x12\x0e\n\x06result\x18\x01 \x01(\x03\"\x11\n\x0fRoomListRequest\"*\n\rRoomListEntry\x12\n\n\x02id\x18\x01 \x01(\t\x12\r\n\x05score\x18\x02 \x01(\x03\"C\n\rRoomListReply\x12\r\n\x05\x63ount\x18\x01 \x01(\x03\x12#\n\x06result\x18\x02 \x03(\x0b\x32\x13.noir.RoomListEntry\"\x86\x01\n\x10RoomAdminRequest\x12\x0e\n\x06roomID\x18\x01 \x01(\t\x12-\n\ncreateRoom\x18\x02 \x01(\x0b\x32\x17.noir.CreateRoomRequestH\x00\x12)\n\x08playFile\x18\x03 \x01(\x0b\x32\x15.noir.PlayFileRequestH\x00\x42\x08\n\x06method\"\x92\x01\n\x0eRoomAdminReply\x12\x0e\n\x06roomID\x18\x01 \x01(\t\x12\x0f\n\x05\x65rror\x18\x02 \x01(\tH\x00\x12+\n\ncreateRoom\x18\x03 \x01(\x0b\x32\x15.noir.CreateRoomReplyH\x00\x12\'\n\x08playFile\x18\x04 \x01(\x0b\x32\x13.noir.PlayFileReplyH\x00\x42\t\n\x07payload\"7\n\x11\x43reateRoomRequest\x12\"\n\x07options\x18\x01 \x01(\x0b\x32\x11.noir.RoomOptions\"5\n\x0f\x43reateRoomReply\x12\"\n\x07options\x18\x02 \x01(\x0b\x32\x11.noir.RoomOptions\"@\n\x0fPlayFileRequest\x12\x10\n\x08\x66ilename\x18\x01 \x01(\t\x12\x0b\n\x03pid\x18\x02 \x01(\t\x12\x0e\n\x06repeat\x18\x03 \x01(\x08\"N\n\rPlayFileReply\x12\x10\n\x08\x66ilename\x18\x01 \x01(\t\x12\x0b\n\x03pid\x18\x02 \x01(\t\x12\x0e\n\x06repeat\x18\x03 \x01(\x08\x12\x0e\n\x06status\x18\x04 \x01(\x08\"\xa5\x01\n\rSignalRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12!\n\x04join\x18\x02 \x01(\x0b\x32\x11.noir.JoinRequestH\x00\x12\x15\n\x0b\x64\x65scription\x18\x03 \x01(\x0cH\x00\x12 \n\x07trickle\x18\x04 \x01(\x0b\x32\r.noir.TrickleH\x00\x12\x0e\n\x04kill\x18\x05 \x01(\x08H\x00\x12\x11\n\trequestId\x18\x06 \x01(\tB\t\n\x07payload\"\xd0\x01\n\x0bSignalReply\x12\n\n\x02id\x18\x01 \x01(\t\x12\x1f\n\x04join\x18\x02 \x01(\x0b\x32\x0f.noir.JoinReplyH\x00\x12\x15\n\x0b\x64\x65scription\x18\x03 \x01(\x0cH\x00\x12 \n\x07trickle\x18\x04 \x01(\x0b\x32\r.noir.TrickleH\x00\x12\x1c\n\x12iceConnectionState\x18\x05 \x01(\tH\x00\x12\x0f\n\x05\x65rror\x18\x06 \x01(\tH\x00\x12\x0e\n\x04kill\x18\x07 \x01(\x08H\x00\x12\x11\n\trequestId\x18\x08 \x01(\tB\t\n\x07payload\"/\n\x0bJoinRequest\x12\x0b\n\x03sid\x18\x01 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x02 \x01(\x0c\" \n\tJoinReply\x12\x13\n\x0b\x64\x65scription\x18\x01 \x01(\x0c\"f\n\x07Trickle\x12$\n\x06target\x18\x01 \x01(\x0e\x32\x14.noir.Trickle.Target\x12\x0c\n\x04init\x18\x02 \x01(\t\"\'\n\x06Target\x12\r\n\tPUBLISHER\x10\x00\x12\x0e\n\nSUBSCRIBER\x10\x01\"t\n\nNoirObject\x12\x1e\n\x04node\x18\x01 \x01(\x0b\x32\x0e.noir.NodeDataH\x00\x12\x1e\n\x04room\x18\x02 \x01(\x0b\x32\x0e.noir.RoomDataH\x00\x12\x1e\n\x04user\x18\x03 \x01(\x0b\x32\x0e.noir.UserDataH\x00\x42\x06\n\x04\x64\x61ta\"F\n\x08NodeData\x12\n\n\x02id\x18\x01 \x01(\t\x12.\n\nlastUpdate\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\xba\x01\n\x08RoomData\x12\n\n\x02id\x18\x01 \x01(\t\x12+\n\x07\x63reated\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12.\n\nlastUpdate\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0e\n\x06nodeID\x18\x04 \x01(\t\x12\"\n\x07options\x18\x05 \x01(\x0b\x32\x11.noir.RoomOptions\x12\x11\n\tpublisher\x18\x06 \x01(\t\"\xaf\x01\n\x0bRoomOptions\x12\r\n\x05\x64\x65\x62ug\x18\x01 \x01(\x05\x12\r\n\x05title\x18\x02 \x01(\t\x12\x15\n\rmaxAgeSeconds\x18\x03 \x01(\x05\x12\x17\n\x0fkeyExpiryFactor\x18\x04 \x01(\x05\x12\x14\n\x0cjoinPassword\x18\x05 \x01(\t\x12\x17\n\x0fpublishPassword\x18\x06 \x01(\t\x12\x10\n\x08maxPeers\x18\x07 \x01(\x05\x12\x11\n\tisChannel\x18\x08 \x01(\x08\"\xbb\x01\n\x08UserData\x12\n\n\x02id\x18\x01 \x01(\t\x12+\n\x07\x63reated\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12.\n\nlastUpdate\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0e\n\x06roomID\x18\x05 \x01(\t\x12\"\n\x07options\x18\x06 \x01(\x0b\x32\x11.noir.UserOptions\x12\x12\n\npublishing\x18\x07 \x01(\x08\"[\n\x0bUserOptions\x12\r\n\x05\x64\x65\x62ug\x18\x01 \x01(\x05\x12\r\n\x05title\x18\x02 \x01(\t\x12\x15\n\rmaxAgeSeconds\x18\x03 \x01(\x05\x12\x17\n\x0fkeyExpiryFactor\x18\x04 \x01(\x05\x32\xca\x01\n\x04Noir\x12\x31\n\tSubscribe\x12\x11.noir.AdminClient\x1a\x0f.noir.NoirReply0\x01\x12&\n\x04Send\x12\x11.noir.NoirRequest\x1a\x0b.noir.Empty\x12/\n\x05\x41\x64min\x12\x11.noir.NoirRequest\x1a\x0f.noir.NoirReply(\x01\x30\x01\x12\x36\n\x06Signal\x12\x13.noir.SignalRequest\x1a\x11.noir.SignalReply\"\x00(\x01\x30\x01\x32=\n\x03SFU\x12\x36\n\x06Signal\x12\x13.noir.SignalRequest\x1a\x11.noir.SignalReply\"\x00(\x01\x30\x01\x42\'Z%github.com/net-prophet/noir/pkg/protob\x06proto3'
+  serialized_pb=b'\n\x14pkg/proto/noir.proto\x12\x04noir\x1a\x1fgoogle/protobuf/timestamp.proto\"\x1f\n\x0b\x41\x64minClient\x12\x10\n\x08\x63lientID\x18\x01 \x01(\t\"\x07\n\x05\x45mpty\"\x9d\x01\n\x0bNoirRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12\n\n\x02\x61t\x18\x02 \x01(\t\x12\x0e\n\x06\x61\x63tion\x18\x03 \x01(\t\x12%\n\x06signal\x18\x04 \x01(\x0b\x32\x13.noir.SignalRequestH\x00\x12#\n\x05\x61\x64min\x18\x05 \x01(\x0b\x32\x12.noir.AdminRequestH\x00\x12\x0f\n\x07\x61\x64minID\x18\x06 \x01(\tB\t\n\x07\x63ommand\"\x87\x01\n\tNoirReply\x12\n\n\x02id\x18\x01 \x01(\t\x12\n\n\x02\x61t\x18\x02 \x01(\t\x12#\n\x06signal\x18\x03 \x01(\x0b\x32\x11.noir.SignalReplyH\x00\x12!\n\x05\x61\x64min\x18\x04 \x01(\x0b\x32\x10.noir.AdminReplyH\x00\x12\x0f\n\x05\x65rror\x18\x05 \x01(\tH\x00\x42\t\n\x07\x63ommand\"\x9e\x01\n\x0c\x41\x64minRequest\x12+\n\troomAdmin\x18\x01 \x01(\x0b\x32\x16.noir.RoomAdminRequestH\x00\x12+\n\troomCount\x18\x02 \x01(\x0b\x32\x16.noir.RoomCountRequestH\x00\x12)\n\x08roomList\x18\x03 \x01(\x0b\x32\x15.noir.RoomListRequestH\x00\x42\t\n\x07payload\"\xa7\x01\n\nAdminReply\x12\x0f\n\x05\x65rror\x18\x01 \x01(\tH\x00\x12)\n\troomAdmin\x18\x02 \x01(\x0b\x32\x14.noir.RoomAdminReplyH\x00\x12)\n\troomCount\x18\x03 \x01(\x0b\x32\x14.noir.RoomCountReplyH\x00\x12\'\n\x08roomList\x18\x04 \x01(\x0b\x32\x13.noir.RoomListReplyH\x00\x42\t\n\x07payload\"\x12\n\x10RoomCountRequest\" \n\x0eRoomCountReply\x12\x0e\n\x06result\x18\x01 \x01(\x03\"\x11\n\x0fRoomListRequest\"*\n\rRoomListEntry\x12\n\n\x02id\x18\x01 \x01(\t\x12\r\n\x05score\x18\x02 \x01(\x03\"C\n\rRoomListReply\x12\r\n\x05\x63ount\x18\x01 \x01(\x03\x12#\n\x06result\x18\x02 \x03(\x0b\x32\x13.noir.RoomListEntry\"\x84\x01\n\x10RoomAdminRequest\x12\x0e\n\x06roomID\x18\x01 \x01(\t\x12-\n\ncreateRoom\x18\x02 \x01(\x0b\x32\x17.noir.CreateRoomRequestH\x00\x12\'\n\x07roomJob\x18\x03 \x01(\x0b\x32\x14.noir.RoomJobRequestH\x00\x42\x08\n\x06method\"\x90\x01\n\x0eRoomAdminReply\x12\x0e\n\x06roomID\x18\x01 \x01(\t\x12\x0f\n\x05\x65rror\x18\x02 \x01(\tH\x00\x12+\n\ncreateRoom\x18\x03 \x01(\x0b\x32\x15.noir.CreateRoomReplyH\x00\x12%\n\x07roomJob\x18\x04 \x01(\x0b\x32\x12.noir.RoomJobReplyH\x00\x42\t\n\x07payload\"7\n\x11\x43reateRoomRequest\x12\"\n\x07options\x18\x01 \x01(\x0b\x32\x11.noir.RoomOptions\"5\n\x0f\x43reateRoomReply\x12\"\n\x07options\x18\x02 \x01(\x0b\x32\x11.noir.RoomOptions\"?\n\x0eRoomJobRequest\x12\x0f\n\x07handler\x18\x01 \x01(\t\x12\x0b\n\x03pid\x18\x02 \x01(\t\x12\x0f\n\x07options\x18\x03 \x01(\x0c\"M\n\x0cRoomJobReply\x12\x0f\n\x07handler\x18\x01 \x01(\t\x12\x0b\n\x03pid\x18\x02 \x01(\t\x12\x0e\n\x06status\x18\x03 \x01(\x08\x12\x0f\n\x07options\x18\x04 \x01(\x0c\"\xa5\x01\n\rSignalRequest\x12\n\n\x02id\x18\x01 \x01(\t\x12!\n\x04join\x18\x02 \x01(\x0b\x32\x11.noir.JoinRequestH\x00\x12\x15\n\x0b\x64\x65scription\x18\x03 \x01(\x0cH\x00\x12 \n\x07trickle\x18\x04 \x01(\x0b\x32\r.noir.TrickleH\x00\x12\x0e\n\x04kill\x18\x05 \x01(\x08H\x00\x12\x11\n\trequestId\x18\x06 \x01(\tB\t\n\x07payload\"\xd0\x01\n\x0bSignalReply\x12\n\n\x02id\x18\x01 \x01(\t\x12\x1f\n\x04join\x18\x02 \x01(\x0b\x32\x0f.noir.JoinReplyH\x00\x12\x15\n\x0b\x64\x65scription\x18\x03 \x01(\x0cH\x00\x12 \n\x07trickle\x18\x04 \x01(\x0b\x32\r.noir.TrickleH\x00\x12\x1c\n\x12iceConnectionState\x18\x05 \x01(\tH\x00\x12\x0f\n\x05\x65rror\x18\x06 \x01(\tH\x00\x12\x0e\n\x04kill\x18\x07 \x01(\x08H\x00\x12\x11\n\trequestId\x18\x08 \x01(\tB\t\n\x07payload\"/\n\x0bJoinRequest\x12\x0b\n\x03sid\x18\x01 \x01(\t\x12\x13\n\x0b\x64\x65scription\x18\x02 \x01(\x0c\" \n\tJoinReply\x12\x13\n\x0b\x64\x65scription\x18\x01 \x01(\x0c\"f\n\x07Trickle\x12$\n\x06target\x18\x01 \x01(\x0e\x32\x14.noir.Trickle.Target\x12\x0c\n\x04init\x18\x02 \x01(\t\"\'\n\x06Target\x12\r\n\tPUBLISHER\x10\x00\x12\x0e\n\nSUBSCRIBER\x10\x01\"t\n\nNoirObject\x12\x1e\n\x04node\x18\x01 \x01(\x0b\x32\x0e.noir.NodeDataH\x00\x12\x1e\n\x04room\x18\x02 \x01(\x0b\x32\x0e.noir.RoomDataH\x00\x12\x1e\n\x04user\x18\x03 \x01(\x0b\x32\x0e.noir.UserDataH\x00\x42\x06\n\x04\x64\x61ta\"F\n\x08NodeData\x12\n\n\x02id\x18\x01 \x01(\t\x12.\n\nlastUpdate\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\"\xba\x01\n\x08RoomData\x12\n\n\x02id\x18\x01 \x01(\t\x12+\n\x07\x63reated\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12.\n\nlastUpdate\x18\x03 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0e\n\x06nodeID\x18\x04 \x01(\t\x12\"\n\x07options\x18\x05 \x01(\x0b\x32\x11.noir.RoomOptions\x12\x11\n\tpublisher\x18\x06 \x01(\t\"\xaf\x01\n\x0bRoomOptions\x12\r\n\x05\x64\x65\x62ug\x18\x01 \x01(\x05\x12\r\n\x05title\x18\x02 \x01(\t\x12\x15\n\rmaxAgeSeconds\x18\x03 \x01(\x05\x12\x17\n\x0fkeyExpiryFactor\x18\x04 \x01(\x05\x12\x14\n\x0cjoinPassword\x18\x05 \x01(\t\x12\x17\n\x0fpublishPassword\x18\x06 \x01(\t\x12\x10\n\x08maxPeers\x18\x07 \x01(\x05\x12\x11\n\tisChannel\x18\x08 \x01(\x08\"\xbb\x01\n\x08UserData\x12\n\n\x02id\x18\x01 \x01(\t\x12+\n\x07\x63reated\x18\x02 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12.\n\nlastUpdate\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0e\n\x06roomID\x18\x05 \x01(\t\x12\"\n\x07options\x18\x06 \x01(\x0b\x32\x11.noir.UserOptions\x12\x12\n\npublishing\x18\x07 \x01(\x08\"[\n\x0bUserOptions\x12\r\n\x05\x64\x65\x62ug\x18\x01 \x01(\x05\x12\r\n\x05title\x18\x02 \x01(\t\x12\x15\n\rmaxAgeSeconds\x18\x03 \x01(\x05\x12\x17\n\x0fkeyExpiryFactor\x18\x04 \x01(\x05\"\xfb\x01\n\x07JobData\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0f\n\x07handler\x18\x02 \x01(\t\x12\'\n\x06status\x18\x03 \x01(\x0e\x32\x17.noir.JobData.JobStatus\x12+\n\x07\x63reated\x18\x04 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12.\n\nlastUpdate\x18\x05 \x01(\x0b\x32\x1a.google.protobuf.Timestamp\x12\x0e\n\x06nodeID\x18\x06 \x01(\t\"=\n\tJobStatus\x12\x0b\n\x07\x43REATED\x10\x00\x12\x0b\n\x07RUNNING\x10\x01\x12\x0b\n\x07STOPPED\x10\x02\x12\t\n\x05\x45RROR\x10\x03\"]\n\x0bPeerJobData\x12\x0e\n\x06roomID\x18\x01 \x01(\t\x12\x0e\n\x06peerID\x18\x02 \x01(\t\x12\x15\n\rpublishTracks\x18\x03 \x03(\t\x12\x17\n\x0fsubscribeTracks\x18\x04 \x03(\t2\xca\x01\n\x04Noir\x12\x31\n\tSubscribe\x12\x11.noir.AdminClient\x1a\x0f.noir.NoirReply0\x01\x12&\n\x04Send\x12\x11.noir.NoirRequest\x1a\x0b.noir.Empty\x12/\n\x05\x41\x64min\x12\x11.noir.NoirRequest\x1a\x0f.noir.NoirReply(\x01\x30\x01\x12\x36\n\x06Signal\x12\x13.noir.SignalRequest\x1a\x11.noir.SignalReply\"\x00(\x01\x30\x01\x32=\n\x03SFU\x12\x36\n\x06Signal\x12\x13.noir.SignalRequest\x1a\x11.noir.SignalReply\"\x00(\x01\x30\x01\x42\'Z%github.com/net-prophet/noir/pkg/protob\x06proto3'
   ,
   dependencies=[google_dot_protobuf_dot_timestamp__pb2.DESCRIPTOR,])
 
@@ -46,10 +46,45 @@ _TRICKLE_TARGET = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=1989,
-  serialized_end=2028,
+  serialized_start=1983,
+  serialized_end=2022,
 )
 _sym_db.RegisterEnumDescriptor(_TRICKLE_TARGET)
+
+_JOBDATA_JOBSTATUS = _descriptor.EnumDescriptor(
+  name='JobStatus',
+  full_name='noir.JobData.JobStatus',
+  filename=None,
+  file=DESCRIPTOR,
+  create_key=_descriptor._internal_create_key,
+  values=[
+    _descriptor.EnumValueDescriptor(
+      name='CREATED', index=0, number=0,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='RUNNING', index=1, number=1,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='STOPPED', index=2, number=2,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+    _descriptor.EnumValueDescriptor(
+      name='ERROR', index=3, number=3,
+      serialized_options=None,
+      type=None,
+      create_key=_descriptor._internal_create_key),
+  ],
+  containing_type=None,
+  serialized_options=None,
+  serialized_start=3055,
+  serialized_end=3116,
+)
+_sym_db.RegisterEnumDescriptor(_JOBDATA_JOBSTATUS)
 
 
 _ADMINCLIENT = _descriptor.Descriptor(
@@ -538,7 +573,7 @@ _ROOMADMINREQUEST = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='playFile', full_name='noir.RoomAdminRequest.playFile', index=2,
+      name='roomJob', full_name='noir.RoomAdminRequest.roomJob', index=2,
       number=3, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -562,7 +597,7 @@ _ROOMADMINREQUEST = _descriptor.Descriptor(
     fields=[]),
   ],
   serialized_start=921,
-  serialized_end=1055,
+  serialized_end=1053,
 )
 
 
@@ -596,7 +631,7 @@ _ROOMADMINREPLY = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='playFile', full_name='noir.RoomAdminReply.playFile', index=3,
+      name='roomJob', full_name='noir.RoomAdminReply.roomJob', index=3,
       number=4, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -619,8 +654,8 @@ _ROOMADMINREPLY = _descriptor.Descriptor(
       create_key=_descriptor._internal_create_key,
     fields=[]),
   ],
-  serialized_start=1058,
-  serialized_end=1204,
+  serialized_start=1056,
+  serialized_end=1200,
 )
 
 
@@ -651,8 +686,8 @@ _CREATEROOMREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1206,
-  serialized_end=1261,
+  serialized_start=1202,
+  serialized_end=1257,
 )
 
 
@@ -683,37 +718,37 @@ _CREATEROOMREPLY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1263,
-  serialized_end=1316,
+  serialized_start=1259,
+  serialized_end=1312,
 )
 
 
-_PLAYFILEREQUEST = _descriptor.Descriptor(
-  name='PlayFileRequest',
-  full_name='noir.PlayFileRequest',
+_ROOMJOBREQUEST = _descriptor.Descriptor(
+  name='RoomJobRequest',
+  full_name='noir.RoomJobRequest',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   create_key=_descriptor._internal_create_key,
   fields=[
     _descriptor.FieldDescriptor(
-      name='filename', full_name='noir.PlayFileRequest.filename', index=0,
+      name='handler', full_name='noir.RoomJobRequest.handler', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='pid', full_name='noir.PlayFileRequest.pid', index=1,
+      name='pid', full_name='noir.RoomJobRequest.pid', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='repeat', full_name='noir.PlayFileRequest.repeat', index=2,
-      number=3, type=8, cpp_type=7, label=1,
-      has_default_value=False, default_value=False,
+      name='options', full_name='noir.RoomJobRequest.options', index=2,
+      number=3, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"",
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
@@ -729,44 +764,44 @@ _PLAYFILEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1318,
-  serialized_end=1382,
+  serialized_start=1314,
+  serialized_end=1377,
 )
 
 
-_PLAYFILEREPLY = _descriptor.Descriptor(
-  name='PlayFileReply',
-  full_name='noir.PlayFileReply',
+_ROOMJOBREPLY = _descriptor.Descriptor(
+  name='RoomJobReply',
+  full_name='noir.RoomJobReply',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   create_key=_descriptor._internal_create_key,
   fields=[
     _descriptor.FieldDescriptor(
-      name='filename', full_name='noir.PlayFileReply.filename', index=0,
+      name='handler', full_name='noir.RoomJobReply.handler', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='pid', full_name='noir.PlayFileReply.pid', index=1,
+      name='pid', full_name='noir.RoomJobReply.pid', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='repeat', full_name='noir.PlayFileReply.repeat', index=2,
+      name='status', full_name='noir.RoomJobReply.status', index=2,
       number=3, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='status', full_name='noir.PlayFileReply.status', index=3,
-      number=4, type=8, cpp_type=7, label=1,
-      has_default_value=False, default_value=False,
+      name='options', full_name='noir.RoomJobReply.options', index=3,
+      number=4, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"",
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
@@ -782,8 +817,8 @@ _PLAYFILEREPLY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1384,
-  serialized_end=1462,
+  serialized_start=1379,
+  serialized_end=1456,
 )
 
 
@@ -854,8 +889,8 @@ _SIGNALREQUEST = _descriptor.Descriptor(
       create_key=_descriptor._internal_create_key,
     fields=[]),
   ],
-  serialized_start=1465,
-  serialized_end=1630,
+  serialized_start=1459,
+  serialized_end=1624,
 )
 
 
@@ -940,8 +975,8 @@ _SIGNALREPLY = _descriptor.Descriptor(
       create_key=_descriptor._internal_create_key,
     fields=[]),
   ],
-  serialized_start=1633,
-  serialized_end=1841,
+  serialized_start=1627,
+  serialized_end=1835,
 )
 
 
@@ -979,8 +1014,8 @@ _JOINREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1843,
-  serialized_end=1890,
+  serialized_start=1837,
+  serialized_end=1884,
 )
 
 
@@ -1011,8 +1046,8 @@ _JOINREPLY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1892,
-  serialized_end=1924,
+  serialized_start=1886,
+  serialized_end=1918,
 )
 
 
@@ -1051,8 +1086,8 @@ _TRICKLE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1926,
-  serialized_end=2028,
+  serialized_start=1920,
+  serialized_end=2022,
 )
 
 
@@ -1102,8 +1137,8 @@ _NOIROBJECT = _descriptor.Descriptor(
       create_key=_descriptor._internal_create_key,
     fields=[]),
   ],
-  serialized_start=2030,
-  serialized_end=2146,
+  serialized_start=2024,
+  serialized_end=2140,
 )
 
 
@@ -1141,8 +1176,8 @@ _NODEDATA = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2148,
-  serialized_end=2218,
+  serialized_start=2142,
+  serialized_end=2212,
 )
 
 
@@ -1208,8 +1243,8 @@ _ROOMDATA = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2221,
-  serialized_end=2407,
+  serialized_start=2215,
+  serialized_end=2401,
 )
 
 
@@ -1289,8 +1324,8 @@ _ROOMOPTIONS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2410,
-  serialized_end=2585,
+  serialized_start=2404,
+  serialized_end=2579,
 )
 
 
@@ -1356,8 +1391,8 @@ _USERDATA = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2588,
-  serialized_end=2775,
+  serialized_start=2582,
+  serialized_end=2769,
 )
 
 
@@ -1409,8 +1444,129 @@ _USEROPTIONS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2777,
-  serialized_end=2868,
+  serialized_start=2771,
+  serialized_end=2862,
+)
+
+
+_JOBDATA = _descriptor.Descriptor(
+  name='JobData',
+  full_name='noir.JobData',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='id', full_name='noir.JobData.id', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='handler', full_name='noir.JobData.handler', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='status', full_name='noir.JobData.status', index=2,
+      number=3, type=14, cpp_type=8, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='created', full_name='noir.JobData.created', index=3,
+      number=4, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='lastUpdate', full_name='noir.JobData.lastUpdate', index=4,
+      number=5, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='nodeID', full_name='noir.JobData.nodeID', index=5,
+      number=6, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+    _JOBDATA_JOBSTATUS,
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=2865,
+  serialized_end=3116,
+)
+
+
+_PEERJOBDATA = _descriptor.Descriptor(
+  name='PeerJobData',
+  full_name='noir.PeerJobData',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='roomID', full_name='noir.PeerJobData.roomID', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='peerID', full_name='noir.PeerJobData.peerID', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='publishTracks', full_name='noir.PeerJobData.publishTracks', index=2,
+      number=3, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='subscribeTracks', full_name='noir.PeerJobData.subscribeTracks', index=3,
+      number=4, type=9, cpp_type=9, label=3,
+      has_default_value=False, default_value=[],
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=3118,
+  serialized_end=3211,
 )
 
 _NOIRREQUEST.fields_by_name['signal'].message_type = _SIGNALREQUEST
@@ -1461,15 +1617,15 @@ _ADMINREPLY.oneofs_by_name['payload'].fields.append(
 _ADMINREPLY.fields_by_name['roomList'].containing_oneof = _ADMINREPLY.oneofs_by_name['payload']
 _ROOMLISTREPLY.fields_by_name['result'].message_type = _ROOMLISTENTRY
 _ROOMADMINREQUEST.fields_by_name['createRoom'].message_type = _CREATEROOMREQUEST
-_ROOMADMINREQUEST.fields_by_name['playFile'].message_type = _PLAYFILEREQUEST
+_ROOMADMINREQUEST.fields_by_name['roomJob'].message_type = _ROOMJOBREQUEST
 _ROOMADMINREQUEST.oneofs_by_name['method'].fields.append(
   _ROOMADMINREQUEST.fields_by_name['createRoom'])
 _ROOMADMINREQUEST.fields_by_name['createRoom'].containing_oneof = _ROOMADMINREQUEST.oneofs_by_name['method']
 _ROOMADMINREQUEST.oneofs_by_name['method'].fields.append(
-  _ROOMADMINREQUEST.fields_by_name['playFile'])
-_ROOMADMINREQUEST.fields_by_name['playFile'].containing_oneof = _ROOMADMINREQUEST.oneofs_by_name['method']
+  _ROOMADMINREQUEST.fields_by_name['roomJob'])
+_ROOMADMINREQUEST.fields_by_name['roomJob'].containing_oneof = _ROOMADMINREQUEST.oneofs_by_name['method']
 _ROOMADMINREPLY.fields_by_name['createRoom'].message_type = _CREATEROOMREPLY
-_ROOMADMINREPLY.fields_by_name['playFile'].message_type = _PLAYFILEREPLY
+_ROOMADMINREPLY.fields_by_name['roomJob'].message_type = _ROOMJOBREPLY
 _ROOMADMINREPLY.oneofs_by_name['payload'].fields.append(
   _ROOMADMINREPLY.fields_by_name['error'])
 _ROOMADMINREPLY.fields_by_name['error'].containing_oneof = _ROOMADMINREPLY.oneofs_by_name['payload']
@@ -1477,8 +1633,8 @@ _ROOMADMINREPLY.oneofs_by_name['payload'].fields.append(
   _ROOMADMINREPLY.fields_by_name['createRoom'])
 _ROOMADMINREPLY.fields_by_name['createRoom'].containing_oneof = _ROOMADMINREPLY.oneofs_by_name['payload']
 _ROOMADMINREPLY.oneofs_by_name['payload'].fields.append(
-  _ROOMADMINREPLY.fields_by_name['playFile'])
-_ROOMADMINREPLY.fields_by_name['playFile'].containing_oneof = _ROOMADMINREPLY.oneofs_by_name['payload']
+  _ROOMADMINREPLY.fields_by_name['roomJob'])
+_ROOMADMINREPLY.fields_by_name['roomJob'].containing_oneof = _ROOMADMINREPLY.oneofs_by_name['payload']
 _CREATEROOMREQUEST.fields_by_name['options'].message_type = _ROOMOPTIONS
 _CREATEROOMREPLY.fields_by_name['options'].message_type = _ROOMOPTIONS
 _SIGNALREQUEST.fields_by_name['join'].message_type = _JOINREQUEST
@@ -1536,6 +1692,10 @@ _ROOMDATA.fields_by_name['options'].message_type = _ROOMOPTIONS
 _USERDATA.fields_by_name['created'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
 _USERDATA.fields_by_name['lastUpdate'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
 _USERDATA.fields_by_name['options'].message_type = _USEROPTIONS
+_JOBDATA.fields_by_name['status'].enum_type = _JOBDATA_JOBSTATUS
+_JOBDATA.fields_by_name['created'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
+_JOBDATA.fields_by_name['lastUpdate'].message_type = google_dot_protobuf_dot_timestamp__pb2._TIMESTAMP
+_JOBDATA_JOBSTATUS.containing_type = _JOBDATA
 DESCRIPTOR.message_types_by_name['AdminClient'] = _ADMINCLIENT
 DESCRIPTOR.message_types_by_name['Empty'] = _EMPTY
 DESCRIPTOR.message_types_by_name['NoirRequest'] = _NOIRREQUEST
@@ -1551,8 +1711,8 @@ DESCRIPTOR.message_types_by_name['RoomAdminRequest'] = _ROOMADMINREQUEST
 DESCRIPTOR.message_types_by_name['RoomAdminReply'] = _ROOMADMINREPLY
 DESCRIPTOR.message_types_by_name['CreateRoomRequest'] = _CREATEROOMREQUEST
 DESCRIPTOR.message_types_by_name['CreateRoomReply'] = _CREATEROOMREPLY
-DESCRIPTOR.message_types_by_name['PlayFileRequest'] = _PLAYFILEREQUEST
-DESCRIPTOR.message_types_by_name['PlayFileReply'] = _PLAYFILEREPLY
+DESCRIPTOR.message_types_by_name['RoomJobRequest'] = _ROOMJOBREQUEST
+DESCRIPTOR.message_types_by_name['RoomJobReply'] = _ROOMJOBREPLY
 DESCRIPTOR.message_types_by_name['SignalRequest'] = _SIGNALREQUEST
 DESCRIPTOR.message_types_by_name['SignalReply'] = _SIGNALREPLY
 DESCRIPTOR.message_types_by_name['JoinRequest'] = _JOINREQUEST
@@ -1564,6 +1724,8 @@ DESCRIPTOR.message_types_by_name['RoomData'] = _ROOMDATA
 DESCRIPTOR.message_types_by_name['RoomOptions'] = _ROOMOPTIONS
 DESCRIPTOR.message_types_by_name['UserData'] = _USERDATA
 DESCRIPTOR.message_types_by_name['UserOptions'] = _USEROPTIONS
+DESCRIPTOR.message_types_by_name['JobData'] = _JOBDATA
+DESCRIPTOR.message_types_by_name['PeerJobData'] = _PEERJOBDATA
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 AdminClient = _reflection.GeneratedProtocolMessageType('AdminClient', (_message.Message,), {
@@ -1671,19 +1833,19 @@ CreateRoomReply = _reflection.GeneratedProtocolMessageType('CreateRoomReply', (_
   })
 _sym_db.RegisterMessage(CreateRoomReply)
 
-PlayFileRequest = _reflection.GeneratedProtocolMessageType('PlayFileRequest', (_message.Message,), {
-  'DESCRIPTOR' : _PLAYFILEREQUEST,
+RoomJobRequest = _reflection.GeneratedProtocolMessageType('RoomJobRequest', (_message.Message,), {
+  'DESCRIPTOR' : _ROOMJOBREQUEST,
   '__module__' : 'pkg.proto.noir_pb2'
-  # @@protoc_insertion_point(class_scope:noir.PlayFileRequest)
+  # @@protoc_insertion_point(class_scope:noir.RoomJobRequest)
   })
-_sym_db.RegisterMessage(PlayFileRequest)
+_sym_db.RegisterMessage(RoomJobRequest)
 
-PlayFileReply = _reflection.GeneratedProtocolMessageType('PlayFileReply', (_message.Message,), {
-  'DESCRIPTOR' : _PLAYFILEREPLY,
+RoomJobReply = _reflection.GeneratedProtocolMessageType('RoomJobReply', (_message.Message,), {
+  'DESCRIPTOR' : _ROOMJOBREPLY,
   '__module__' : 'pkg.proto.noir_pb2'
-  # @@protoc_insertion_point(class_scope:noir.PlayFileReply)
+  # @@protoc_insertion_point(class_scope:noir.RoomJobReply)
   })
-_sym_db.RegisterMessage(PlayFileReply)
+_sym_db.RegisterMessage(RoomJobReply)
 
 SignalRequest = _reflection.GeneratedProtocolMessageType('SignalRequest', (_message.Message,), {
   'DESCRIPTOR' : _SIGNALREQUEST,
@@ -1762,6 +1924,20 @@ UserOptions = _reflection.GeneratedProtocolMessageType('UserOptions', (_message.
   })
 _sym_db.RegisterMessage(UserOptions)
 
+JobData = _reflection.GeneratedProtocolMessageType('JobData', (_message.Message,), {
+  'DESCRIPTOR' : _JOBDATA,
+  '__module__' : 'pkg.proto.noir_pb2'
+  # @@protoc_insertion_point(class_scope:noir.JobData)
+  })
+_sym_db.RegisterMessage(JobData)
+
+PeerJobData = _reflection.GeneratedProtocolMessageType('PeerJobData', (_message.Message,), {
+  'DESCRIPTOR' : _PEERJOBDATA,
+  '__module__' : 'pkg.proto.noir_pb2'
+  # @@protoc_insertion_point(class_scope:noir.PeerJobData)
+  })
+_sym_db.RegisterMessage(PeerJobData)
+
 
 DESCRIPTOR._options = None
 
@@ -1772,8 +1948,8 @@ _NOIR = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=2871,
-  serialized_end=3073,
+  serialized_start=3214,
+  serialized_end=3416,
   methods=[
   _descriptor.MethodDescriptor(
     name='Subscribe',
@@ -1828,8 +2004,8 @@ _SFU = _descriptor.ServiceDescriptor(
   index=1,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=3075,
-  serialized_end=3136,
+  serialized_start=3418,
+  serialized_end=3479,
   methods=[
   _descriptor.MethodDescriptor(
     name='Signal',

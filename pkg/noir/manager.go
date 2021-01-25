@@ -98,7 +98,7 @@ func (m *Manager) Noir() {
 				panic("unable to retrieve cluster status")
 			}
 			if len(m.workers) == 0 {
-				panic("no node data found in redis (not even my own!)")
+				panic("no node jobData found in redis (not even my own!)")
 			}
 		case <-info.C:
 			log.Infof("%s: noirs=%d rooms=%d users=%d",
@@ -218,7 +218,7 @@ func (m *Manager) ConnectUser(signal *pb.SignalRequest) (*sfu.Peer, *pb.UserData
 	if numTracks == 1 && desc.MediaDescriptions[0].MediaName.Media == "application" {
 		publishing = false
 	} else if numTracks >= 1 {
-		// we have more than 1 media track, or the 1 track we have is not data
+		// we have more than 1 media track, or the 1 track we have is not jobData
 		publishing = true
 	}
 
@@ -355,14 +355,14 @@ func (m *Manager) UpdateAvailableNodes() error {
 	for _, id := range ids {
 		status, err := m.redis.HGet(pb.KeyNodeMap(), id).Result()
 		if err != nil {
-			log.Errorf("error getting worker data %s", err)
+			log.Errorf("error getting worker jobData %s", err)
 			return err
 		}
 
 		var decode pb.NoirObject
 
 		if err := proto.Unmarshal([]byte(status), &decode); err != nil {
-			log.Errorf("error decoding worker data, ignoring worker %s", err)
+			log.Errorf("error decoding worker jobData, ignoring worker %s", err)
 			delete(m.workers, id)
 			continue
 		}
@@ -413,7 +413,7 @@ func (m *Manager) GetRemoteRoomExists(roomID string) (bool, error) {
 func (m *Manager) GetRemoteRoomData(roomID string) (*pb.RoomData, error) {
 	loaded, err := m.LoadData(pb.KeyRoomData(roomID))
 	if err != nil {
-		log.Errorf("error loading room data! %s", err)
+		log.Errorf("error loading room jobData! %s", err)
 		return nil, err
 	}
 	room := m.rooms[roomID]
@@ -425,7 +425,7 @@ func (m *Manager) ClaimRoomNode(roomID string, nodeID string) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if exists, _ := m.GetRemoteRoomExists(roomID); exists == false {
-		room := NewRoom(roomID) // Just used for the data
+		room := NewRoom(roomID) // Just used for the jobData
 		data := &room.data
 		data.NodeID = m.id
 		err := SaveRoomData(roomID, data, m)
@@ -560,7 +560,7 @@ func (m *Manager) ValidateOffer(room *pb.RoomData, userID string, offer webrtc.S
 func (m *Manager) GetRemoteUserData(userID string) (*pb.UserData, error) {
 	loaded, err := m.LoadData(pb.KeyUserData(userID))
 	if err != nil {
-		log.Errorf("error loading user#%s data! %s", userID, err)
+		log.Errorf("error loading user#%s jobData! %s", userID, err)
 		return nil, err
 	}
 	return loaded.GetUser(), nil
@@ -580,7 +580,7 @@ func (m *Manager) GetRemoteNodeData(nodeID string) (*pb.NodeData, error) {
 	}
 
 	if err != nil {
-		log.Errorf("error loading room data! %s", err)
+		log.Errorf("error loading room jobData! %s", err)
 		return nil, err
 	}
 	return loaded.GetNode(), nil

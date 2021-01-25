@@ -52,6 +52,14 @@ func KeyTopicFromAdmin(clientID string) string {
 	return "noir/topic/from-admin/" + clientID
 }
 
+func KeyTopicToJob(jobID string) string {
+	return "noir/topic/to-job/" + jobID
+}
+
+func KeyTopicFromJob(jobID string) string {
+	return "noir/topic/from-job/" + jobID
+}
+
 // Topic News Channels - PUBLISH when topic has new messages
 
 func KeyPeerNewsChannel(peerID string) string {

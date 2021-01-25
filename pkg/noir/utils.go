@@ -90,8 +90,8 @@ func ReadAdminAction(admin *pb.AdminRequest) (string, error) {
 			switch roomAdmin.Method.(type) {
 				case *pb.RoomAdminRequest_CreateRoom:
 					return action + "room.create", nil
-				case *pb.RoomAdminRequest_PlayFile:
-					return action + "room.playfile", nil
+				case *pb.RoomAdminRequest_RoomJob:
+					return action + "room.runjob", nil
 				default:
 					return action, errors.New("unhandled roomadmin")
 			}

@@ -176,7 +176,7 @@ func (w *worker) PeerChannel(userData *pb.UserData, peer *sfu.Peer) {
 
 					roomType := "room"
 
-					// Just one data track
+					// Just one jobData track
 					if D == 1 && A == 0 && V == 0 {
 						userData.Publishing = false
 					} else if A > 0 || V > 0 {

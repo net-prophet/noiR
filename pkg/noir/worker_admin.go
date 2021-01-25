@@ -18,6 +18,19 @@ func (w *worker) Reply(request *pb.NoirRequest, reply *pb.NoirReply) error {
 	return nil
 }
 
+func (w *worker) HandleRoomJob(request *pb.NoirRequest) {
+	admin := request.GetAdmin()
+	roomAdmin := admin.GetRoomAdmin()
+	roomJob := roomAdmin.GetRoomJob()
+	handler, OK := w.jobHandlers[roomJob.GetHandler()]
+	if OK {
+		job := handler(request)
+		go job.Handle()
+	} else {
+		log.Errorf("no handler for job: %s", roomJob.GetHandler())
+	}
+}
+
 func (w *worker) HandleAdmin(request *pb.NoirRequest) error {
 	admin := request.GetAdmin()
 	if roomAdmin := admin.GetRoomAdmin() ; roomAdmin != nil {
@@ -31,6 +44,10 @@ func (w *worker) HandleAdmin(request *pb.NoirRequest) error {
 			room := NewRoom(roomAdmin.RoomID)
 			room.SetOptions(createRoom.GetOptions())
 			return SaveRoomData(roomAdmin.RoomID, &room.data, w.manager)
+		}
+		if roomJob := roomAdmin.GetRoomJob() ; roomJob != nil {
+			log.Infof("room=%s job=%s", roomAdmin.RoomID, roomJob.Handler)
+			w.HandleRoomJob(request)
 		}
 	} else if list := admin.GetRoomList() ; list != nil {
 		keys := w.manager.redis.ZCount(pb.KeyRoomScores(), "1", "+inf").Val()

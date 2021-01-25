@@ -93,7 +93,7 @@ message RoomAdminRequest {
     string roomID = 1;
     oneof method {
         CreateRoomRequest createRoom = 2;
-        PlayFileRequest playFile = 3;
+        RoomJobRequest roomJob = 3;
     }
 }
 
@@ -102,7 +102,7 @@ message RoomAdminReply {
     oneof payload {
         string error = 2;
         CreateRoomReply createRoom = 3;
-        PlayFileReply playFile = 4;
+        RoomJobReply roomJob = 4;
     }
 }
 
@@ -114,17 +114,17 @@ message CreateRoomReply {
     RoomOptions options = 2;
 }
 
-message PlayFileRequest {
-    string filename = 1;
+message RoomJobRequest {
+    string handler = 1;
     string pid = 2; // peer id will be random if not specified
-    bool repeat = 3;
+    bytes options = 3;
 }
 
-message PlayFileReply {
-    string filename = 1;
+message RoomJobReply {
+    string handler = 1;
     string pid = 2; // peer id will be random if not specified
-    bool repeat = 3;
-    bool status = 4;
+    bool status = 3;
+    bytes options = 4;
 }
 
 /* ****************************************************
@@ -227,4 +227,25 @@ message UserOptions {
     string title = 2;
     int32 maxAgeSeconds = 3;
     int32 keyExpiryFactor = 4;
+}
+
+message JobData {
+    string id = 1;
+    string handler = 2;
+    enum JobStatus {
+        CREATED = 0;
+        RUNNING = 1;
+        STOPPED = 2;
+        ERROR = 3;
+    }
+    JobStatus status = 3;
+    google.protobuf.Timestamp created = 4;
+    google.protobuf.Timestamp lastUpdate = 5;
+    string nodeID = 6;
+}
+message PeerJobData {
+    string roomID = 1;
+    string peerID = 2;
+    repeated string publishTracks = 3;
+    repeated string subscribeTracks = 4;
 }

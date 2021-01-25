@@ -80,7 +80,7 @@ func (r *router) TargetForSignal(action string, signal *pb.SignalRequest) (strin
 	} else {
 		roomData, err := r.mgr.GetRemoteRoomData(roomID)
 		if err != nil {
-			log.Errorf("error getting roomID data: %s", err)
+			log.Errorf("error getting roomID jobData: %s", err)
 			return "", err
 		}
 

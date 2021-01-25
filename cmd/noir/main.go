@@ -6,7 +6,9 @@ import (
 	"flag"
 	"fmt"
 	noir "github.com/net-prophet/noir/pkg/noir"
+	"github.com/net-prophet/noir/pkg/noir/jobs"
 	"github.com/net-prophet/noir/pkg/noir/servers"
+	pb "github.com/net-prophet/noir/pkg/proto"
 	"net/http"
 	"os"
 
@@ -133,6 +135,13 @@ func main() {
 	sfu := noir.NewNoirSFU(conf)
 
 	mgr := noir.SetupNoir(&sfu, rdb, id)
+
+	worker := *(mgr.GetWorker())
+	worker.RegisterHandler("PlayFile", func(request *pb.NoirRequest) noir.RunnableJob {
+		admin := request.GetAdmin()
+		roomAdmin := admin.GetRoomAdmin()
+		return jobs.NewPlayFileJob(&mgr, roomAdmin.GetRoomID(), "pink.video", true)
+	})
 
 	go mgr.Noir()
 	defer mgr.Cleanup()
