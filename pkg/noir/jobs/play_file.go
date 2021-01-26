@@ -19,7 +19,7 @@ import (
 
 type PlayFileOptions struct {
 	Filename string `json:"filename"`
-	Repeat bool `json:"repeat"`
+	Repeat int `json:"repeat"`
 }
 
 type PlayFileJob struct {
@@ -29,7 +29,7 @@ type PlayFileJob struct {
 
 const handler = "PlayFile"
 
-func NewPlayFileJob(manager *noir.Manager, roomID string, filename string, repeat bool) *PlayFileJob {
+func NewPlayFileJob(manager *noir.Manager, roomID string, filename string, repeat int) *PlayFileJob {
 	return &PlayFileJob{
 		PeerJob: *noir.NewPeerJob(manager, handler, roomID, noir.RandomString(16)),
 		options: &PlayFileOptions{Filename: filename, Repeat: repeat},
@@ -46,20 +46,8 @@ func (j *PlayFileJob) Handle() {
 		panic("Could not find `" + filename + "`")
 	}
 
-	// We make our own mediaEngine so we can place the sender's codecs in it.  This because we must use the
-	// dynamic media type from the sender in our answer. This is not required if we are the offerer
-	mediaEngine := webrtc.MediaEngine{}
-	mediaEngine.RegisterDefaultCodecs()
+	peerConnection, err := j.GetPeerConnection()
 
-	// Create a new RTCPeerConnection
-	api := webrtc.NewAPI(webrtc.WithMediaEngine(&mediaEngine))
-	peerConnection, err := api.NewPeerConnection(webrtc.Configuration{
-		ICEServers: []webrtc.ICEServer{
-			{
-				URLs: []string{"stun:stun.l.google.com:19302"},
-			},
-		},
-	})
 	if err != nil {
 		j.KillWithError(err)
 		return
@@ -100,15 +88,33 @@ func (j *PlayFileJob) Handle() {
 		<-iceConnectedCtx.Done()
 		log.Infof("done waiting for connection...")
 
+		// A positive repeat will play the file N times, a negative repeat will loop forever
+		repeat := j.options.Repeat
+
 		// Send our video file frame at a time. Pace our sending so we send it at the same speed it should be played back as.
 		// This isn't required since the video is timestamped, but we will such much higher loss if we send all at once.
 		sleepTime := time.Millisecond * time.Duration((float32(header.TimebaseNumerator)/float32(header.TimebaseDenominator))*1000)
 		for {
 			frame, _, ivfErr := ivf.ParseNextFrame()
 			if ivfErr == io.EOF {
-				fmt.Printf("All video frames parsed and sent")
-				j.Kill(0)
-				return
+				if repeat == -1 || repeat > 0 {
+					file.Seek(0, 0)
+					ivf, header, ivfErr = ivfreader.NewWith(file)
+					frame, _, ivfErr = ivf.ParseNextFrame()
+					if ivfErr != nil {
+						j.KillWithError(ivfErr)
+						return
+					}
+					if repeat > 0 {
+						log.Debugf("repeating %s %d more times", filename, repeat)
+						repeat = repeat - 1
+					}
+
+				} else {
+					fmt.Printf("All video frames parsed and sent")
+					j.Kill(0)
+					return
+				}
 			}
 
 			if ivfErr != nil {
@@ -147,29 +153,12 @@ func (j *PlayFileJob) Handle() {
 
 	<-gatherComplete
 
+	err = j.SendJoin()
+
 	if err != nil {
 		log.Errorf("Error publishing stream: %v", err)
 		j.KillWithError(err)
 	}
-
-	router := j.GetManager().GetRouter()
-	queue := (*router).GetQueue()
-	peerID := j.GetPeerData().PeerID
-	roomID := j.GetPeerData().RoomID
-	log.Infof("joining room=%s peer=%s", roomID, peerID)
-	err = noir.EnqueueRequest(*queue, &pb.NoirRequest{
-		Command: &pb.NoirRequest_Signal{
-			Signal: &pb.SignalRequest{
-				Id: peerID,
-				Payload: &pb.SignalRequest_Join{
-					Join: &pb.JoinRequest{
-						Sid:         roomID,
-						Description: []byte(peerConnection.LocalDescription().SDP),
-					},
-				},
-			},
-		},
-	})
 
 	if err != nil {
 		log.Errorf("Error sending publish request: %v", err)
@@ -198,7 +187,7 @@ func (j *PlayFileJob) Handle() {
 
 		if signal, ok := reply.Command.(*pb.NoirReply_Signal); ok {
 			if join := signal.Signal.GetJoin() ; join != nil {
-				log.Debugf("playfile connected %s => %s!\n", peerID)
+				log.Debugf("playfile connected %s => %s!\n", signal.Signal.Id)
 				// Set the remote SessionDescription
 				desc := &webrtc.SessionDescription{}
 				json.Unmarshal(join.Description, desc)
@@ -208,7 +197,7 @@ func (j *PlayFileJob) Handle() {
 				}
 			}
 			if signal.Signal.GetKill() {
-				log.Debugf("signal killed room=%s peer=%s", roomID, peerID)
+				log.Debugf("signal killed user=%s", signal.Signal.Id)
 				j.Kill(0)
 				return
 			}

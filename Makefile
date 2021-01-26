@@ -41,6 +41,9 @@ run_second:
 docker: protos
 	docker build . -t ${CI_REGISTRY_IMAGE}:latest
 
+copy_voir:
+	cp -r ../voir/build/web/* demo/
+
 
 tag:
 	test ! -z "$$TAG" && (echo "Tagging $$TAG" \

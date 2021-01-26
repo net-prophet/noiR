@@ -63,9 +63,14 @@ func (w *worker) HandleAdmin(request *pb.NoirRequest) error {
 				Id:    z.Member.(string),
 				Score: int64(z.Score),
 			})
-			log.Infof("reporting %s %s", z.Member.(string), z.Score)
 		}
-
+		if keys == 0 {
+			rooms = append(rooms, &pb.RoomListEntry{
+				Id: "test session",
+				Score: int64(0),
+			})
+			keys = 1
+		}
 
 		return w.Reply(request, &pb.NoirReply{
 			Command: &pb.NoirReply_Admin{

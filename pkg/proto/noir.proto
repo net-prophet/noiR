@@ -245,7 +245,7 @@ message JobData {
 }
 message PeerJobData {
     string roomID = 1;
-    string peerID = 2;
+    string userID = 2;
     repeated string publishTracks = 3;
     repeated string subscribeTracks = 4;
 }

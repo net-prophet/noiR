@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	noir "github.com/net-prophet/noir/pkg/noir"
@@ -140,7 +141,19 @@ func main() {
 	worker.RegisterHandler("PlayFile", func(request *pb.NoirRequest) noir.RunnableJob {
 		admin := request.GetAdmin()
 		roomAdmin := admin.GetRoomAdmin()
-		return jobs.NewPlayFileJob(&mgr, roomAdmin.GetRoomID(), "pink.video", true)
+		options := &jobs.PlayFileOptions{}
+		packed := roomAdmin.GetRoomJob().GetOptions()
+		if len(packed) > 0 {
+			err := json.Unmarshal(packed, options)
+			if err != nil {
+				log.Errorf("error unmarshalling job options")
+				return nil
+			}
+		} else {
+			options.Filename = "pink.video"
+			options.Repeat = 10
+		}
+		return jobs.NewPlayFileJob(&mgr, roomAdmin.GetRoomID(), options.Filename, options.Repeat)
 	})
 
 	go mgr.Noir()
