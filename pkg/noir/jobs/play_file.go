@@ -123,7 +123,7 @@ func (j *PlayFileJob) Handle() {
 			}
 
 			time.Sleep(sleepTime)
-			if ivfErr = videoTrack.WriteSample(media.Sample{Data: frame}); ivfErr != nil {
+			if ivfErr = videoTrack.WriteSample(media.Sample{Data: frame, Duration: time.Second}); ivfErr != nil {
 				j.KillWithError(ivfErr)
 				return
 			}
