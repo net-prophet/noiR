@@ -150,8 +150,8 @@ func main() {
 				return nil
 			}
 		} else {
-			options.Filename = "pink.video"
-			options.Repeat = 10
+			options.Filename = "test.video"
+			options.Repeat = 3
 		}
 		return jobs.NewPlayFileJob(&mgr, roomAdmin.GetRoomID(), options.Filename, options.Repeat)
 	})
