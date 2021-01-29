@@ -3,35 +3,33 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/go-redis/redis"
 	noir "github.com/net-prophet/noir/pkg/noir"
 	"github.com/net-prophet/noir/pkg/noir/jobs"
 	"github.com/net-prophet/noir/pkg/noir/servers"
-	pb "github.com/net-prophet/noir/pkg/proto"
+	"github.com/spf13/viper"
 	"net/http"
 	"os"
-
-	"github.com/go-redis/redis"
-	"github.com/spf13/viper"
 
 	log "github.com/pion/ion-log"
 )
 
 var (
-	conf           = noir.Config{}
-	ctx            = context.Background()
-	file           string
-	redisURL       string
-	demoAddr       string
-	grpcAddr       string
-	cert           string
-	key            string
-	publicJrpcAddr string
-	adminJrpcAddr  string
-	webGrpcAddr    string
-	SFU            noir.NoirSFU
+	conf            = noir.Config{}
+	ctx             = context.Background()
+	file            string
+	nodeServices    string
+	redisURL        string
+	demoAddr        string
+	grpcAddr        string
+	cert            string
+	key             string
+	publicJrpcAddr  string
+	adminJrpcAddr   string
+	webGrpcAddr     string
+	SFU             noir.NoirSFU
 )
 
 const (
@@ -86,6 +84,7 @@ func load() bool {
 
 func parse() bool {
 	flag.StringVar(&file, "c", "/configs/sfu.toml", "config file")
+	flag.StringVar(&nodeServices, "n", "*", "node services to launch")
 	flag.StringVar(&redisURL, "u", "localhost:6379", "redisURL to use")
 	flag.StringVar(&demoAddr, "d", "", "http addr to listen for demo")
 	flag.StringVar(&publicJrpcAddr, "j", "", "jsonrpc addr for public")
@@ -135,26 +134,11 @@ func main() {
 	}
 	sfu := noir.NewNoirSFU(conf)
 
-	mgr := noir.SetupNoir(&sfu, rdb, id)
+	mgr := noir.SetupNoir(&sfu, rdb, id, nodeServices)
 
 	worker := *(mgr.GetWorker())
-	worker.RegisterHandler("PlayFile", func(request *pb.NoirRequest) noir.RunnableJob {
-		admin := request.GetAdmin()
-		roomAdmin := admin.GetRoomAdmin()
-		options := &jobs.PlayFileOptions{}
-		packed := roomAdmin.GetRoomJob().GetOptions()
-		if len(packed) > 0 {
-			err := json.Unmarshal(packed, options)
-			if err != nil {
-				log.Errorf("error unmarshalling job options")
-				return nil
-			}
-		} else {
-			options.Filename = "test.video"
-			options.Repeat = 3
-		}
-		return jobs.NewPlayFileJob(&mgr, roomAdmin.GetRoomID(), options.Filename, options.Repeat)
-	})
+	worker.RegisterHandler(jobs.LabelPlayFile, jobs.NewPlayFileHandler(&mgr))
+	worker.RegisterHandler(jobs.LabelRTMPSend, jobs.NewRTMPSendHandler(&mgr))
 
 	go mgr.Noir()
 	defer mgr.Cleanup()

@@ -207,7 +207,7 @@ func (w *worker) PeerChannel(userData *pb.UserData, peer *sfu.Peer) {
 
 					answer, _ := peer.Answer(desc.Desc)
 					bytes, err := json.Marshal(answer)
-					log.Debugf("got offer %s, sending reply %s", request.Id, summary)
+					log.Debugf("answering offer from %s: %s", request.Id, summary)
 					w.SignalReply(userData.Id, &pb.NoirReply{
 						Id: request.Id,
 						Command: &pb.NoirReply_Signal{
@@ -219,7 +219,7 @@ func (w *worker) PeerChannel(userData *pb.UserData, peer *sfu.Peer) {
 						},
 					})
 					if err != nil {
-						log.Errorf("offer answer send error %v ", err)
+						log.Errorf("answer send error %v ", err)
 					}
 
 					w.manager.SaveData(pb.KeyUserData(userData.Id), &pb.NoirObject{

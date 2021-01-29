@@ -5,6 +5,8 @@ import (
 	"github.com/go-redis/redis"
 	pb "github.com/net-prophet/noir/pkg/proto"
 	log "github.com/pion/ion-log"
+	"github.com/pion/sdp/v3"
+	"github.com/pion/webrtc/v3"
 	proto "google.golang.org/protobuf/proto"
 	"math/rand"
 	"os"
@@ -100,6 +102,20 @@ func ReadAdminAction(admin *pb.AdminRequest) (string, error) {
 	}
 }
 
+func ParseSDP(offer webrtc.SessionDescription) (*sdp.SessionDescription, error) {
+	desc, err := offer.Unmarshal()
+	if err != nil {
+		return nil, err
+	}
+	numTracks := len(desc.MediaDescriptions)
+
+	if numTracks == 0 {
+		return nil, errors.New("offer must include at least an empty datachannel")
+	}
+	return desc, nil
+}
+
+
 func FillDefaults(value *pb.NoirRequest) {
 	if value.At == "" {
 		now, _ := time.Now().MarshalText()
@@ -170,7 +186,7 @@ func NewTestSetup() (Manager, *redis.Client) {
 	})
 	config := Config{}
 	sfu := NewNoirSFU(config)
-	return SetupNoir(&sfu, rdb, "test-worker"), rdb
+	return SetupNoir(&sfu, rdb, "test-worker", "*"), rdb
 }
 
 // listQueue is a queue for the tests!

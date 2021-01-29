@@ -15,6 +15,7 @@ import (
 	"os"
 	"os/signal"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -36,14 +37,15 @@ type Manager struct {
 	workers map[string]pb.NodeData
 	users   map[string]*sfu.Peer
 	rooms   map[string]Room
+	nodeServices []string
 	mu      sync.RWMutex
 }
 
-func SetupNoir(sfu *NoirSFU, client *redis.Client, nodeID string) Manager {
+func SetupNoir(sfu *NoirSFU, client *redis.Client, nodeID string, services string) Manager {
 	routerQueue := NewRedisQueue(client, RouterTopic, RouterMaxAge)
 	workerQueue := NewRedisQueue(client, pb.KeyWorkerTopic(nodeID), RouterMaxAge)
 	workerQueue.Cleanup()
-	manager := NewRedisManager(sfu, client, nodeID)
+	manager := NewRedisManager(sfu, client, nodeID, services)
 	worker := NewWorker(nodeID, &manager, workerQueue)
 	router := NewRouter(routerQueue, &manager)
 	manager.SetWorker(&worker)
@@ -52,13 +54,14 @@ func SetupNoir(sfu *NoirSFU, client *redis.Client, nodeID string) Manager {
 	return manager
 }
 
-func NewRedisManager(provider *NoirSFU, client *redis.Client, nodeID string) Manager {
+func NewRedisManager(provider *NoirSFU, client *redis.Client, nodeID string, services string) Manager {
 	manager := Manager{redis: client,
 		workers: make(map[string]pb.NodeData),
 		users:   make(map[string]*sfu.Peer),
 		rooms:   make(map[string]Room),
 		sfu:     provider,
 		id:      nodeID,
+		nodeServices: strings.Split(services, ","),
 	}
 	(*provider).AttachManager(&manager)
 	return manager
@@ -84,8 +87,12 @@ func (m *Manager) Noir() {
 		panic("unable to retrieve cluster status")
 	}
 
+	// Worker is always enabled, but we check services for Signal and Admin
 	go m.worker.HandleForever()
-	go m.router.HandleForever()
+
+	if m.IsServiceEnabled("router") {
+		go m.router.HandleForever()
+	}
 
 	for {
 		select {
@@ -117,6 +124,15 @@ func (m *Manager) Noir() {
 			return
 		}
 	}
+}
+
+func (m *Manager) IsServiceEnabled(service string) bool {
+	for _, v := range m.nodeServices {
+		if v == service || v == "*" {
+			return true
+		}
+	}
+	return false
 }
 
 func (m *Manager) BindRoomSession(room Room, session *sfu.Session) *Room {
@@ -597,19 +613,6 @@ func (m *Manager) ValidateHealthyNodeID(nodeID string) error {
 		return nil
 	}
 	return invalid
-}
-
-func ParseSDP(offer webrtc.SessionDescription) (*sdp.SessionDescription, error) {
-	desc, err := offer.Unmarshal()
-	if err != nil {
-		return nil, err
-	}
-	numTracks := len(desc.MediaDescriptions)
-
-	if numTracks == 0 {
-		return nil, errors.New("offer must include at least an empty datachannel")
-	}
-	return desc, nil
 }
 
 func ValidateHealthy(node *pb.NodeData) bool {
