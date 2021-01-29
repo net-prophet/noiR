@@ -138,7 +138,7 @@ func main() {
 
 	worker := *(mgr.GetWorker())
 	worker.RegisterHandler(jobs.LabelPlayFile, jobs.NewPlayFileHandler(&mgr))
-	worker.RegisterHandler(jobs.LabelRTMPSend, jobs.NewRTMPSendHandler(&mgr))
+	// worker.RegisterHandler(jobs.LabelRTMPSend, jobs.NewRTMPSendHandler(&mgr))
 
 	go mgr.Noir()
 	defer mgr.Cleanup()

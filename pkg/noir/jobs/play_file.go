@@ -19,7 +19,7 @@ import (
 
 type PlayFileOptions struct {
 	Filename string `json:"filename"`
-	Repeat int `json:"repeat"`
+	Repeat   int    `json:"repeat"`
 }
 
 type PlayFileJob struct {
@@ -27,12 +27,33 @@ type PlayFileJob struct {
 	options *PlayFileOptions
 }
 
-const handler = "PlayFile"
+const LabelPlayFile = "PlayFile"
 
 func NewPlayFileJob(manager *noir.Manager, roomID string, filename string, repeat int) *PlayFileJob {
 	return &PlayFileJob{
-		PeerJob: *noir.NewPeerJob(manager, handler, roomID, noir.RandomString(16)),
+		PeerJob: *noir.NewPeerJob(manager, LabelPlayFile, roomID, noir.RandomString(16)),
 		options: &PlayFileOptions{Filename: filename, Repeat: repeat},
+	}
+}
+
+func NewPlayFileHandler(manager *noir.Manager) noir.JobHandler {
+	return func(request *pb.NoirRequest) noir.RunnableJob {
+		admin := request.GetAdmin()
+		roomAdmin := admin.GetRoomAdmin()
+		options := &PlayFileOptions{}
+		packed := roomAdmin.GetRoomJob().GetOptions()
+		if len(packed) > 0 {
+			err := json.Unmarshal(packed, options)
+			if err != nil {
+				log.Errorf("error unmarshalling job options")
+				return nil
+			}
+		} else {
+			options.Filename = "test.video"
+			options.Repeat = 0
+		}
+
+		return NewPlayFileJob(manager, roomAdmin.GetRoomID(), options.Filename, options.Repeat)
 	}
 }
 
@@ -165,7 +186,7 @@ func (j *PlayFileJob) Handle() {
 		j.KillWithError(err)
 	}
 
-	peerQueue := j.GetPeerQueue()
+	peerQueue := j.GetQueueFromPeer()
 
 	for {
 		message, err := peerQueue.BlockUntilNext(noir.QueueMessageTimeout)
@@ -186,7 +207,7 @@ func (j *PlayFileJob) Handle() {
 		err = proto.Unmarshal(message, &reply)
 
 		if signal, ok := reply.Command.(*pb.NoirReply_Signal); ok {
-			if join := signal.Signal.GetJoin() ; join != nil {
+			if join := signal.Signal.GetJoin(); join != nil {
 				log.Debugf("playfile connected %s => %s!\n", signal.Signal.Id)
 				// Set the remote SessionDescription
 				desc := &webrtc.SessionDescription{}

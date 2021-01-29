@@ -15,9 +15,9 @@ type Job struct {
 
 type PeerJob struct {
 	Job
-	roomID string
+	roomID      string
 	peerJobData *pb.PeerJobData
-	pc *webrtc.PeerConnection
+	pc          *webrtc.PeerConnection
 }
 
 type RunnableJob interface {
@@ -28,36 +28,39 @@ func NewBaseJob(manager *Manager, handler string, jobID string) *Job {
 	return &Job{
 		id:      jobID,
 		manager: manager,
-		jobData:    &pb.JobData{
-			Id:              jobID,
-			Handler:         handler,
-			Status:          0,
-			Created:         timestamppb.Now(),
-			LastUpdate:      timestamppb.Now(),
-			NodeID:          manager.ID(),
+		jobData: &pb.JobData{
+			Id:         jobID,
+			Handler:    handler,
+			Status:     0,
+			Created:    timestamppb.Now(),
+			LastUpdate: timestamppb.Now(),
+			NodeID:     manager.ID(),
 		},
 	}
 }
 
-func NewPeerJob(manager *Manager, handler string, roomID string, userID string) *PeerJob {
+func NewPeerJob(manager *Manager, handler string, roomID string, jobID string) *PeerJob {
+	userID := "job-" + handler + "-" + jobID
 	return &PeerJob{
-		Job: *NewBaseJob(manager, handler, "job-"+userID),
+		Job: *NewBaseJob(manager, handler, jobID),
 		peerJobData: &pb.PeerJobData{
 			RoomID:          roomID,
-			UserID:          "job-"+userID,
+			UserID:          userID,
 			PublishTracks:   []string{},
 			SubscribeTracks: []string{},
 		},
 	}
 }
 
-
 func (j *Job) GetCommandQueue() Queue {
 	return j.manager.GetQueue(pb.KeyTopicFromJob(j.id))
 }
 
-func (j *PeerJob) GetPeerQueue() Queue {
+func (j *PeerJob) GetQueueFromPeer() Queue {
 	return j.manager.GetQueue(pb.KeyTopicFromPeer(j.peerJobData.GetUserID()))
+}
+func (j *PeerJob) GetQueueToPeer() Queue {
+	return j.manager.GetQueue(pb.KeyTopicToPeer(j.peerJobData.GetUserID()))
 }
 
 func (j *Job) GetManager() *Manager {
@@ -125,7 +128,7 @@ func (j *PeerJob) SendJoin() error {
 		return err
 	}
 
-	log.Infof("joining room=%s user=%s", roomID, userID)
+	log.Infof("joining room=%s as=%s", roomID, userID)
 	return EnqueueRequest(*queue, &pb.NoirRequest{
 		Command: &pb.NoirRequest_Signal{
 			Signal: &pb.SignalRequest{
@@ -139,8 +142,4 @@ func (j *PeerJob) SendJoin() error {
 			},
 		},
 	})
-}
-
-func (j *PeerJob) GetFromPeerQueue() Queue {
-	return j.manager.GetQueue(pb.KeyTopicFromPeer(j.peerJobData.UserID))
 }
