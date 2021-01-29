@@ -18,6 +18,7 @@ type PeerJob struct {
 	roomID      string
 	peerJobData *pb.PeerJobData
 	pc          *webrtc.PeerConnection
+	mediaEngine *webrtc.MediaEngine
 }
 
 type RunnableJob interface {
@@ -43,6 +44,7 @@ func NewPeerJob(manager *Manager, handler string, roomID string, jobID string) *
 	userID := "job-" + handler + "-" + jobID
 	return &PeerJob{
 		Job: *NewBaseJob(manager, handler, jobID),
+		mediaEngine: &webrtc.MediaEngine{},
 		peerJobData: &pb.PeerJobData{
 			RoomID:          roomID,
 			UserID:          userID,
@@ -95,13 +97,15 @@ func (j *PeerJob) KillWithError(err error) {
 func (j *PeerJob) GetPeerData() *pb.PeerJobData {
 	return j.peerJobData
 }
+
+func (j *PeerJob) GetMediaEngine() *webrtc.MediaEngine {
+	return j.mediaEngine
+}
+
 func (j *PeerJob) GetPeerConnection() (*webrtc.PeerConnection, error) {
 	if j.pc == nil {
-		mediaEngine := webrtc.MediaEngine{}
-		mediaEngine.RegisterDefaultCodecs()
-
 		// Create a new RTCPeerConnection
-		api := webrtc.NewAPI(webrtc.WithMediaEngine(&mediaEngine))
+		api := webrtc.NewAPI(webrtc.WithMediaEngine(j.mediaEngine))
 		pc, err := api.NewPeerConnection(webrtc.Configuration{
 			ICEServers: []webrtc.ICEServer{
 				{

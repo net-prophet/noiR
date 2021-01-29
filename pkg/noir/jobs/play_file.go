@@ -61,10 +61,16 @@ func (j *PlayFileJob) Handle() {
 	// Assert that we have an audio or video file
 	filename := j.options.Filename
 	_, err := os.Stat(filename)
-	haveVideoFile := !os.IsNotExist(err)
 
-	if !haveVideoFile {
-		panic("Could not find `" + filename + "`")
+	if err != nil {
+		j.KillWithError(err)
+		return
+	}
+
+	err = j.GetMediaEngine().RegisterDefaultCodecs()
+	if err != nil {
+		j.KillWithError(err)
+		return
 	}
 
 	peerConnection, err := j.GetPeerConnection()

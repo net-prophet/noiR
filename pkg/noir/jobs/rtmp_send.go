@@ -63,17 +63,16 @@ func NewRTMPSendHandler(manager *noir.Manager) noir.JobHandler {
 
 func (j *RTMPSendJob) Handle() {
 	log.Infof("started rtmp")
-	m := webrtc.MediaEngine{}
 
 	// Setup the codecs you want to use.
 	// Only support VP8 and OPUS, this makes our WebM muxer code simpler
-	if err := m.RegisterCodec(webrtc.RTPCodecParameters{
+	if err := j.GetMediaEngine().RegisterCodec(webrtc.RTPCodecParameters{
 		RTPCodecCapability: webrtc.RTPCodecCapability{MimeType: "video/VP8", ClockRate: 90000, Channels: 0, SDPFmtpLine: "", RTCPFeedback: nil},
 		PayloadType:        96,
 	}, webrtc.RTPCodecTypeVideo); err != nil {
 		j.KillWithError(err)
 	}
-	if err := m.RegisterCodec(webrtc.RTPCodecParameters{
+	if err := j.GetMediaEngine().RegisterCodec(webrtc.RTPCodecParameters{
 		RTPCodecCapability: webrtc.RTPCodecCapability{MimeType: "audio/opus", ClockRate: 48000, Channels: 0, SDPFmtpLine: "", RTCPFeedback: nil},
 		PayloadType:        111,
 	}, webrtc.RTPCodecTypeAudio); err != nil {
@@ -82,8 +81,6 @@ func (j *RTMPSendJob) Handle() {
 
 	j.audioBuilder = samplebuilder.New(10, &codecs.OpusPacket{}, 48000)
 	j.videoBuilder = samplebuilder.New(10, &codecs.VP8Packet{}, 90000)
-
-	j.SetMediaEngine(&m)
 
 	peerConnection, err := j.GetPeerConnection()
 	if err != nil {
@@ -143,7 +140,7 @@ func (j *RTMPSendJob) Handle() {
 
 	j.SendJoin()
 
-	go j.PeerBridge()
+	//j.PeerBridge()
 }
 
 // Parse Opus audio and Write to WebM
