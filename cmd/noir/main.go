@@ -118,7 +118,7 @@ func main() {
 
 	id := noir.RandomString(8)
 
-	log.Infof("--- noiR SFU %s ---", id)
+	log.Infof("--- noiR SFU %s [services: %s]---", id, nodeServices)
 
 	rdb := redis.NewClient(&redis.Options{
 		Addr:     redisURL,

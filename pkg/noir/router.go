@@ -70,7 +70,7 @@ func (r *router) TargetForSignal(action string, signal *pb.SignalRequest) (strin
 	if roomExists == false {
 		// Assign the first peer queue a Room to a new worker based on capacity
 		log.Infof("no such roomID, routing to random worker")
-		target, err := r.mgr.FirstAvailableWorkerID(action)
+		target, err := r.mgr.RandomNodeForService("sfu")
 		claimed, err := r.mgr.ClaimRoomNode(roomID, target)
 		if claimed == true && err == nil {
 			return target, nil
@@ -84,16 +84,13 @@ func (r *router) TargetForSignal(action string, signal *pb.SignalRequest) (strin
 			return "", err
 		}
 
-		log.Infof("room %s lives on node %s", roomID, roomData.NodeID)
 
-		err = r.mgr.ValidateHealthyNodeID(roomData.NodeID)
-
-		if err == nil {
-			log.Infof("found node %s", roomData.NodeID)
+		if r.mgr.ValidateHealthyNodeID(roomData.NodeID) == nil {
+			log.Debugf("room %s is on healthy node %s", roomData.Id, roomData.NodeID)
 			return roomData.NodeID, nil
 		} else {
-			log.Infof("CANT FIND node %s", roomData.NodeID)
-			target, err := r.mgr.FirstAvailableWorkerID(action)
+			target, err := r.mgr.RandomNodeForService("sfu")
+			log.Infof("reassigning %s to node %s", roomID, target)
 			if err != nil {
 				log.Warnf("")
 				return "", err
@@ -114,12 +111,12 @@ func (r *router) TargetForSignal(action string, signal *pb.SignalRequest) (strin
 func (r *router) Handle(request *pb.NoirRequest) error {
 	var routeErr error
 	target := ""
+	log.Infof("routing: %s", request.Action)
 	if request.GetSignal() != nil {
 		target, routeErr = r.TargetForSignal(request.Action, request.GetSignal())
 	} else {
 		// Assign each action to a new worker based on capacity
-		log.Infof("routing: %s", request.Action)
-		target, routeErr = r.mgr.FirstAvailableWorkerID(request.Action)
+		target, routeErr = r.mgr.RandomNodeForService("worker")
 	}
 
 	if routeErr != nil {

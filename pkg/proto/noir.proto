@@ -192,6 +192,7 @@ message NoirObject {
 message NodeData {
     string id = 1;
     google.protobuf.Timestamp lastUpdate = 2;
+    repeated string services = 3;
 }
 
 message RoomData {

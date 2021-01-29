@@ -27,18 +27,18 @@ const (
 )
 
 type Manager struct {
-	id      string
-	redis   *redis.Client
-	updated time.Time
-	router  Router
-	worker  Worker
-	config  sfu.Config
-	sfu     *NoirSFU
-	workers map[string]pb.NodeData
-	users   map[string]*sfu.Peer
-	rooms   map[string]Room
+	id           string
+	redis        *redis.Client
+	updated      time.Time
+	router       Router
+	worker       Worker
+	config       sfu.Config
+	sfu          *NoirSFU
+	nodes        map[string]pb.NodeData
+	users        map[string]*sfu.Peer
+	rooms        map[string]Room
 	nodeServices []string
-	mu      sync.RWMutex
+	mu           sync.RWMutex
 }
 
 func SetupNoir(sfu *NoirSFU, client *redis.Client, nodeID string, services string) Manager {
@@ -56,11 +56,11 @@ func SetupNoir(sfu *NoirSFU, client *redis.Client, nodeID string, services strin
 
 func NewRedisManager(provider *NoirSFU, client *redis.Client, nodeID string, services string) Manager {
 	manager := Manager{redis: client,
-		workers: make(map[string]pb.NodeData),
-		users:   make(map[string]*sfu.Peer),
-		rooms:   make(map[string]Room),
-		sfu:     provider,
-		id:      nodeID,
+		nodes:        make(map[string]pb.NodeData),
+		users:        make(map[string]*sfu.Peer),
+		rooms:        make(map[string]Room),
+		sfu:          provider,
+		id:           nodeID,
 		nodeServices: strings.Split(services, ","),
 	}
 	(*provider).AttachManager(&manager)
@@ -104,13 +104,13 @@ func (m *Manager) Noir() {
 			if err := m.UpdateAvailableNodes(); err != nil {
 				panic("unable to retrieve cluster status")
 			}
-			if len(m.workers) == 0 {
+			if len(m.nodes) == 0 {
 				panic("no node jobData found in redis (not even my own!)")
 			}
 		case <-info.C:
 			log.Infof("%s: noirs=%d rooms=%d users=%d",
 				m.worker.ID(),
-				len(m.workers),
+				len(m.nodes),
 				m.RoomCount(),
 				len(m.users),
 			)
@@ -127,7 +127,11 @@ func (m *Manager) Noir() {
 }
 
 func (m *Manager) IsServiceEnabled(service string) bool {
-	for _, v := range m.nodeServices {
+	return ServiceInList(service, m.nodeServices)
+}
+
+func ServiceInList(service string, check []string) bool {
+	for _, v := range check {
 		if v == service || v == "*" {
 			return true
 		}
@@ -261,7 +265,7 @@ func (m *Manager) ConnectUser(signal *pb.SignalRequest) (*sfu.Peer, *pb.UserData
 }
 
 func (m *Manager) UpdateRoomScore(roomID string) {
-	if room, ok := m.rooms[roomID] ; ok {
+	if room, ok := m.rooms[roomID]; ok {
 		score := float64(len(room.session.Peers()))
 		if score > 0 {
 			m.redis.ZAdd(pb.KeyRoomScores(), redis.Z{
@@ -306,7 +310,11 @@ func (m *Manager) Checkin() error {
 	id := m.worker.ID()
 	status := &pb.NoirObject{
 		Data: &pb.NoirObject_Node{
-			Node: &pb.NodeData{Id: id, LastUpdate: timestamppb.Now()},
+			Node: &pb.NodeData{
+				Id:         id,
+				LastUpdate: timestamppb.Now(),
+				Services:   m.nodeServices,
+			},
 		},
 	}
 	value, err := proto.Marshal(status)
@@ -335,7 +343,7 @@ func (m *Manager) SetRouter(r *Router) {
 func (m *Manager) RandomWorkerId() (string, error) {
 	ids, err := m.redis.HKeys(pb.KeyNodeMap()).Result()
 	if err != nil || len(ids) == 0 {
-		return "", errors.New("no workers available")
+		return "", errors.New("no nodes available")
 	}
 	return ids[rand.Intn(len(ids))], nil
 }
@@ -353,8 +361,33 @@ func (m *Manager) GetWorker() *Worker {
 	return &(m.worker)
 }
 
-func (m *Manager) FirstAvailableWorkerID(action string) (string, error) {
-	return m.RandomWorkerId()
+func (m *Manager) GetNodes() map[string]pb.NodeData {
+	return m.nodes
+}
+
+func (m *Manager) NodesForService(service string) []string {
+	if m.NeedsUpdate() {
+		m.UpdateAvailableNodes()
+	}
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	available := []string{}
+	for _, nodeData := range m.nodes {
+		if ServiceInList(service, nodeData.Services) && ValidateHealthy(&nodeData) {
+			available = append(available, nodeData.Id)
+		}
+	}
+	log.Debugf("available for %s: %s", service, available)
+	return available
+}
+
+func (m *Manager) RandomNodeForService(service string) (string, error) {
+	candidates := m.NodesForService(service)
+	if len(candidates) > 0 {
+		return candidates[rand.Intn(len(candidates))], nil
+	} else {
+		return "", errors.New("No " + service + " nodes available")
+	}
 }
 
 func (m *Manager) UpdateAvailableNodes() error {
@@ -362,11 +395,11 @@ func (m *Manager) UpdateAvailableNodes() error {
 	defer m.mu.Unlock()
 	ids, err := m.redis.HKeys(pb.KeyNodeMap()).Result()
 	if err != nil {
-		log.Errorf("error getting workers from redis %s", err)
+		log.Errorf("error getting nodes from redis %s", err)
 		return err
 	}
 
-	m.workers = make(map[string]pb.NodeData)
+	m.nodes = make(map[string]pb.NodeData)
 
 	for _, id := range ids {
 		status, err := m.redis.HGet(pb.KeyNodeMap(), id).Result()
@@ -379,7 +412,7 @@ func (m *Manager) UpdateAvailableNodes() error {
 
 		if err := proto.Unmarshal([]byte(status), &decode); err != nil {
 			log.Errorf("error decoding worker jobData, ignoring worker %s", err)
-			delete(m.workers, id)
+			delete(m.nodes, id)
 			continue
 		}
 		remote := decode.GetNode()
@@ -390,7 +423,7 @@ func (m *Manager) UpdateAvailableNodes() error {
 			continue
 		}
 
-		m.workers[id] = *decode.GetNode()
+		m.nodes[id] = *decode.GetNode()
 	}
 
 	m.updated = time.Now()
@@ -451,7 +484,7 @@ func (m *Manager) ClaimRoomNode(roomID string, nodeID string) (bool, error) {
 	} else {
 		data, err := m.GetRemoteRoomData(roomID)
 		if err == nil && data.NodeID != "" {
-			if _, alive := m.workers[data.NodeID]; alive {
+			if _, alive := m.nodes[data.NodeID]; alive {
 				log.Warnf("tried claiming busy room")
 				return false, nil
 			}
@@ -503,7 +536,7 @@ func (m *Manager) LoadData(key string) (*pb.NoirObject, error) {
 }
 
 func (m *Manager) WorkerData(id string) *pb.NodeData {
-	status := m.workers[id]
+	status := m.nodes[id]
 	return &status
 }
 
@@ -619,4 +652,12 @@ func ValidateHealthy(node *pb.NodeData) bool {
 	age := time.Now().Sub(node.GetLastUpdate().AsTime())
 	healthyWindow := 2 * ManagerPingFrequency
 	return age < healthyWindow
+}
+
+func (m *Manager) NeedsUpdate() bool {
+	age := time.Now().Sub(m.updated)
+	healthyWindow := ManagerPingFrequency / 2
+	healthyAge := (age < healthyWindow)
+	hasNodes := len(m.nodes) > 0
+	return !healthyAge || !hasNodes
 }
