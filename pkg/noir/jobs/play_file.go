@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/golang/protobuf/proto"
 	"github.com/net-prophet/noir/pkg/noir"
 	pb "github.com/net-prophet/noir/pkg/proto"
 	log "github.com/pion/ion-log"
@@ -192,44 +191,8 @@ func (j *PlayFileJob) Handle() {
 		j.KillWithError(err)
 	}
 
-	peerQueue := j.GetQueueFromPeer()
+	go j.PeerBridge()
 
-	for {
-		message, err := peerQueue.BlockUntilNext(noir.QueueMessageTimeout)
-
-		if err == io.EOF {
-			// WebRTC Transport closed
-			fmt.Println("WebRTC Transport Closed")
-			j.Kill(0)
-			return
-		}
-
-		if err != nil {
-			continue
-		}
-
-		var reply pb.NoirReply
-
-		err = proto.Unmarshal(message, &reply)
-
-		if signal, ok := reply.Command.(*pb.NoirReply_Signal); ok {
-			if join := signal.Signal.GetJoin(); join != nil {
-				log.Debugf("playfile connected %s => %s!\n", signal.Signal.Id)
-				// Set the remote SessionDescription
-				desc := &webrtc.SessionDescription{}
-				json.Unmarshal(join.Description, desc)
-				if err = peerConnection.SetRemoteDescription(*desc); err != nil {
-					j.KillWithError(err)
-					return
-				}
-			}
-			if signal.Signal.GetKill() {
-				log.Debugf("signal killed user=%s", signal.Signal.Id)
-				j.Kill(0)
-				return
-			}
-		}
-	}
 }
 
 // Search for Codec PayloadType

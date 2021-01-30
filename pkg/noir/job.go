@@ -1,10 +1,13 @@
 package noir
 
 import (
+	"encoding/json"
+	"github.com/golang/protobuf/proto"
 	pb "github.com/net-prophet/noir/pkg/proto"
 	log "github.com/pion/ion-log"
 	"github.com/pion/webrtc/v3"
 	"google.golang.org/protobuf/types/known/timestamppb"
+	"io"
 )
 
 type Job struct {
@@ -146,4 +149,45 @@ func (j *PeerJob) SendJoin() error {
 			},
 		},
 	})
+}
+
+func (j *PeerJob) PeerBridge() {
+	peerQueue := j.GetQueueFromPeer()
+	for {
+		message, err := peerQueue.BlockUntilNext(QueueMessageTimeout)
+
+		if err == io.EOF {
+			// WebRTC Transport closed
+			log.Infof("WebRTC Transport Closed")
+			j.Kill(0)
+			return
+		}
+
+		if err != nil {
+			continue
+		}
+
+		var reply pb.NoirReply
+
+		err = proto.Unmarshal(message, &reply)
+
+		if signal, ok := reply.Command.(*pb.NoirReply_Signal); ok {
+			if join := signal.Signal.GetJoin(); join != nil {
+				log.Debugf("playfile connected %s => %s!\n", signal.Signal.Id)
+				// Set the remote SessionDescription
+				desc := &webrtc.SessionDescription{}
+				json.Unmarshal(join.Description, desc)
+				if err = j.pc.SetRemoteDescription(*desc); err != nil {
+					j.KillWithError(err)
+					return
+				}
+			}
+			if signal.Signal.GetKill() {
+				log.Debugf("signal killed user=%s", signal.Signal.Id)
+				j.Kill(0)
+				return
+			}
+		}
+	}
+
 }
