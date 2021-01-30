@@ -94,7 +94,7 @@ func (j *PlayFileJob) Handle() {
 	}
 
 	go func() {
-		defer peerConnection.Close()
+		defer j.Kill(0)
 
 		// Open a IVF file and start reading using our IVFReader
 		file, ivfErr := os.Open(filename)
@@ -112,7 +112,7 @@ func (j *PlayFileJob) Handle() {
 		log.Infof("waiting for connection...")
 		// Wait for connection established
 		<-iceConnectedCtx.Done()
-		log.Infof("done waiting for connection...")
+		log.Infof("done waiting, job connected!")
 
 		// A positive repeat will play the file N times, a negative repeat will loop forever
 		repeat := j.options.Repeat

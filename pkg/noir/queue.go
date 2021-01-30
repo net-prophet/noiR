@@ -2,6 +2,7 @@ package noir
 
 import (
 	"github.com/go-redis/redis"
+	"io"
 	"time"
 )
 
@@ -55,7 +56,7 @@ func (q *redisQueue) Next() ([]byte, error) {
 func (q *redisQueue) BlockUntilNext(timeout time.Duration) ([]byte, error) {
 	result, err := q.client.BRPop(timeout, q.topic).Result()
 	if err != nil {
-		return nil, err
+		return nil, io.EOF
 	}
 	return []byte(result[1]), nil
 }
