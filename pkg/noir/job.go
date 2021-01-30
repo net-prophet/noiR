@@ -251,6 +251,37 @@ func (j *PeerJob) PeerBridge() {
 					log.Errorf("Unmarshal negotiate error %s", err)
 					continue
 				}
+				if desc.Type == webrtc.SDPTypeOffer {
+					err = j.pc.SetRemoteDescription(desc)
+					if err != nil {
+						log.Errorf("set offer error %s", err)
+						continue
+					}
+					answer, err := j.pc.CreateAnswer(nil)
+					if err != nil {
+						log.Errorf("negotiate error %s", err)
+						continue
+					}
+
+					err = j.pc.SetLocalDescription(answer)
+					if err != nil {
+						log.Errorf("negotiate error %s", err)
+						continue
+					}
+					answer.Type = webrtc.SDPTypeAnswer
+					send, _ := json.Marshal(Negotiation{Desc: answer})
+					j.SendSignalRequest(&pb.SignalRequest{
+						Payload: &pb.SignalRequest_Description{
+							Description: send,
+						},
+					})
+				} else {
+					err = j.pc.SetRemoteDescription(desc)
+					if err != nil {
+						log.Errorf("set answer error %s", err)
+						continue
+					}
+				}
 			}
 			if signal.Signal.GetKill() {
 				log.Debugf("signal killed job=%s", signal.Signal.Id)
